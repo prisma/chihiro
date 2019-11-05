@@ -1,0 +1,7 @@
+#Ignore Document
+query {
+  findManyArtist(where: { Albums_none:{ Tracks_every: {Milliseconds_gt: 130000}}}) {
+    id
+    Name
+  }
+}

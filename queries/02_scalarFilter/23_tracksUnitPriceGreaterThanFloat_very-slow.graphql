@@ -1,0 +1,7 @@
+#Ignore Document
+query {
+  findManyTrack(where: { UnitPrice_gt: 4.99}) {
+    id
+    Name
+  }
+}

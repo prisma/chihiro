@@ -1,0 +1,6 @@
+query {
+  findManyArtist(where: { Name_contains: "avis" }) {
+    id
+    Name
+  }
+}

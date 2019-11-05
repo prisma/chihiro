@@ -1,0 +1,12 @@
+query {
+  findManyArtist(last:2) {
+    Albums {
+      id
+      Title
+      Tracks {
+        id
+        Name
+      }
+    }
+  }
+}

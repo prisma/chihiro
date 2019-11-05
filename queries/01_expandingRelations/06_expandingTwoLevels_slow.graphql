@@ -1,0 +1,9 @@
+query {
+  findManyArtist(where: {id: 55}) {
+    Albums {
+      Tracks {
+        Name
+      }
+    }
+  }
+}

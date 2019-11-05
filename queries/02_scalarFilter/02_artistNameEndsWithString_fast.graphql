@@ -1,0 +1,6 @@
+query {
+  findManyArtist(where: { Name_ends_with: "is"}) {
+    id
+    Name
+  }
+}

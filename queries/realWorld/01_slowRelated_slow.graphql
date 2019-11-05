@@ -1,0 +1,13 @@
+query {
+  findManyAlbum(
+    where: { Artist: { id: 55 } }
+    first: 5
+    orderBy: Title_DESC
+  ) {
+    id
+    Title
+    Tracks {
+      id
+    }
+  }
+}

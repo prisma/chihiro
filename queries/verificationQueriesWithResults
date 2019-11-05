@@ -1,0 +1,98 @@
+# -----   verify cardinalities to check import was successful  ----
+
+query artistsCount {
+  artistsConnection {
+    aggregate {
+      count
+    }
+  }
+}
+
+# response
+{
+  "data": {
+    "artistsConnection": {
+      "aggregate": {
+        "count": 1000
+      }
+    }
+  }
+}
+
+query albumsCount {
+  albumsConnection {
+    aggregate {
+      count
+    }
+  }
+}
+
+# response
+{
+  "data": {
+    "albumsConnection": {
+      "aggregate": {
+        "count": 5000
+      }
+    }
+  }
+}
+
+query tracksCount {
+  tracksConnection {
+    aggregate {
+      count
+    }
+  }
+}
+
+
+# response
+{
+  "data": {
+    "tracksConnection": {
+      "aggregate": {
+        "count": 100000
+      }
+    }
+  }
+}
+
+
+query genreCount {
+  genresConnection {
+    aggregate {
+      count
+    }
+  }
+}
+
+# response
+{
+  "data": {
+    "genresConnection": {
+      "aggregate": {
+        "count": 100
+      }
+    }
+  }
+}
+
+query mediaTypeCount {
+  mediaTypesConnection {
+    aggregate {
+      count
+    }
+  }
+}
+
+# response
+{
+  "data": {
+    "mediaTypesConnection": {
+      "aggregate": {
+        "count": 100
+      }
+    }
+  }
+}

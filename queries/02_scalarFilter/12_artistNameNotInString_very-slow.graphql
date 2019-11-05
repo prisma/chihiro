@@ -1,0 +1,8 @@
+query {
+  findManyArtist(where: { Name_not_in: ["Miles Davis", "AC/DC", "Black Sabbath"] }) {
+    id
+    Name
+  }
+}
+
+# this returns a ton of data

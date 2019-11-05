@@ -1,0 +1,6 @@
+query {
+  findManyAlbum(where: { Artist: { Name: "Miles Davis" } }) {
+    id
+    Title
+  }
+}

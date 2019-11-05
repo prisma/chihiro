@@ -1,0 +1,20 @@
+[package]
+name = "chihiro"
+version = "0.1.0"
+authors = ["Julius de Bruijn <bruijn@prisma.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = "0.2.0-alpha.6"
+futures-preview = "0.3.0-alpha.19"
+reqwest = "0.10.0-alpha.1"
+hyper = { git = "https://github.com/hyperium/hyper", features = ["unstable-stream"] }
+structopt = "0.3"
+indicatif = "0.13"
+metrics-runtime = "0.12"
+metrics-core = "0.5"
+metrics = "0.12"
+serde_json = "1"
+http = "0.1"

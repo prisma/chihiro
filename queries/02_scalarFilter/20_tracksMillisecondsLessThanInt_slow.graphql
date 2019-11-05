@@ -1,0 +1,7 @@
+#Ignore Document
+query {
+  findManyTrack(where: { Milliseconds_lt: 100150}) {
+    id
+    Name
+  }
+}

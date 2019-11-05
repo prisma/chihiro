@@ -1,0 +1,8 @@
+query {
+  findManyArtist(where: { Name_not: "AC/DC"}) {
+    id
+    Name
+  }
+}
+
+# this returns a ton of data

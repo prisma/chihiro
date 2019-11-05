@@ -1,0 +1,6 @@
+query {
+  findManyArtist(where: { Name_in: ["Miles Davis", "John Coltrane", "Dizzy Gillespie"] }) {
+    id
+    Name
+  }
+}

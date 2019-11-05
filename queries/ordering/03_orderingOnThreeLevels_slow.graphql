@@ -1,0 +1,12 @@
+#Ignore Document
+query {
+  findManyArtist(where: { id: 55 } orderBy: Name_DESC) {
+    Name
+    Albums(orderBy: Title_ASC) {
+      Title
+      Tracks(orderBy: UnitPrice_DESC) {
+        Name
+      }
+    }
+  }
+}

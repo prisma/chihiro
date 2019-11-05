@@ -1,0 +1,13 @@
+#Ignore Document
+query {
+  findManyArtist(last: 2) {
+    Albums(first: 2){
+      id
+      Title
+      Tracks(last: 5) {
+        id
+        Name
+      }
+    }
+  }
+}

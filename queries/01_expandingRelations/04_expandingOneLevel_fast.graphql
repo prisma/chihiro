@@ -1,0 +1,10 @@
+query {
+  findManyArtist(where: {id: 55}) {
+    Albums {
+      Title
+    }
+  }
+}
+
+
+# does a unique index that is not the primary key have direct access to the primary id or does it need to go to disk?

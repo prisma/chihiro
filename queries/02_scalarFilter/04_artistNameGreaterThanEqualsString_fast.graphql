@@ -1,0 +1,6 @@
+query {
+  findManyArtist(where: { Name_gte: "X"}) {
+    id
+    Name
+  }
+}

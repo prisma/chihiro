@@ -1,0 +1,8 @@
+query {
+  findManyArtist(where: { Name_not_starts_with: "AC"}) {
+    id
+    Name
+  }
+}
+
+#  this returns a ton of data
