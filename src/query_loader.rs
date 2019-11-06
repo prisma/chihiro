@@ -104,13 +104,20 @@ impl QueryConfig {
         self.duration
     }
 
+    pub fn query_count(&self) -> usize {
+        self.queries.len()
+    }
+
     pub fn test_count(&self) -> usize {
         self.queries.len() * self.rates.len()
     }
 
-    pub fn queries(&self) -> impl Iterator<Item = (&Query, u64)> {
-        self.queries
-            .iter()
+    pub fn queries(&self) -> impl Iterator<Item = &Query> {
+        self.queries.iter()
+    }
+
+    pub fn runs(&self) -> impl Iterator<Item = (&Query, u64)> {
+        self.queries()
             .flat_map(move |q| self.rates.iter().map(move |r| (q, *r)))
     }
 }

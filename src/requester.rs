@@ -40,14 +40,6 @@ impl Requester {
         duration: Duration,
         pb: ProgressBar,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let json_data = json!({
-            "query": query,
-            "variables": {}
-        });
-
-        let payload = serde_json::to_string(&json_data)?;
-        let content_length = format!("{}", payload.len());
-
         let mut rate_stream = Interval::new_interval(Duration::from_nanos(1_000_000_000 / rate));
 
         let start = Instant::now();
@@ -78,16 +70,8 @@ impl Requester {
                 self.metrics()
             ));
 
-            let mut builder = hyper::Request::builder();
-            builder.uri(&self.prisma_url);
-            builder.method("POST");
-
-            builder.header(CONTENT_LENGTH, &content_length);
-            builder.header(CONTENT_TYPE, "application/json");
-
-            let request = builder.body(Body::from(payload.clone()))?;
-            let requesting = self.client.request(request);
             let mut sink = self.receiver.sink();
+            let requesting = self.request(query);
 
             tokio::spawn(async move {
                 let start = Instant::now();
@@ -105,6 +89,28 @@ impl Requester {
         }
 
         Ok(())
+    }
+
+    pub fn request(&self, query: &str) -> hyper::client::ResponseFuture {
+        let json_data = json!({
+            "query": query,
+            "variables": {}
+        });
+
+        let payload = serde_json::to_string(&json_data).unwrap();
+
+        let mut builder = hyper::Request::builder();
+        builder.uri(&self.prisma_url);
+        builder.method("POST");
+
+        let content_length = format!("{}", payload.len());
+        builder.header(CONTENT_LENGTH, &content_length);
+
+        builder.header(CONTENT_TYPE, "application/json");
+
+        let request = builder.body(Body::from(payload)).unwrap();
+
+        self.client.request(request)
     }
 
     fn metrics(&self) -> String {
