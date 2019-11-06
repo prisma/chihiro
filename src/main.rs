@@ -1,41 +1,50 @@
+mod query_loader;
 mod requester;
 
+use metrics_core::{Builder, Drain, Observe};
+use metrics_runtime::{observers::PrometheusBuilder, Receiver};
+use query_loader::QueryConfig;
 use requester::Requester;
 use structopt::StructOpt;
-use metrics_runtime::{Receiver, observers::PrometheusBuilder};
-use metrics_core::{Builder, Observe, Drain};
+
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug, StructOpt, Clone)]
 /// Prisma Load Tester
 pub struct Opt {
-    /// Number of requests per second.
-    #[structopt(long)]
-    rate: u64,
-    /// Number of seconds to run.
-    #[structopt(long)]
-    duration: Option<u64>,
     /// Request timeout in seconds.
     #[structopt(long)]
     timeout: Option<u64>,
+    /// The Prisma URL. Default: http://localhost:4466/
     #[structopt(long)]
     prisma_url: Option<String>,
+    /// The query configuration file (toml) to execute.
+    #[structopt(long)]
+    query_file: String,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let opts = Opt::from_args();
 
     let receiver = Receiver::builder().build()?;
     let cont = receiver.controller();
     receiver.install();
 
-    let mut requester = Requester::from(opts);
-    requester.run().await?;
+    let query_config = QueryConfig::new(opts.query_file)?;
+    let requester = Requester::new(opts.prisma_url);
 
-    let mut observer = PrometheusBuilder::new().build();
-    cont.observe(&mut observer);
+    for (query, rate) in query_config.queries() {
+        println!("{} (rate: {})", query.name(), rate);
+        requester
+            .run(query.query(), rate, query_config.duration())
+            .await?;
 
-    println!("{}", observer.drain());
+        let mut observer = PrometheusBuilder::new().build();
+        cont.observe(&mut observer);
+
+        println!("{}", observer.drain());
+    }
 
     Ok(())
 }
