@@ -20,6 +20,8 @@ pub struct Opt {
     /// The query configuration file (toml) to execute.
     #[structopt(long)]
     query_file: String,
+    #[structopt(long)]
+    validate: bool,
 }
 
 #[tokio::main]
@@ -33,26 +35,27 @@ async fn main() -> Result<()> {
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
         .template("{prefix:.bold.cyan} [{elapsed_precise:.bold.dim}] {wide_msg}");
 
-    let tests = query_config.test_count();
+    if opts.validate {
+        println!("Validating queries...");
+        let pb = ProgressBar::new(query_config.query_count() as u64);
 
-    println!("Validating queries...");
-    let pb = ProgressBar::new(query_config.query_count() as u64);
+        for query in query_config.queries() {
+            let res = requester.request(query.query()).await?;
+            let body = res.into_body().try_concat().await?;
+            let body = String::from_utf8(body.to_vec())?;
+            let json: serde_json::Value = serde_json::from_str(&body)?;
 
-    for query in query_config.queries() {
-        let res = requester.request(query.query()).await?;
-        let body = res.into_body().try_concat().await?;
-        let body = String::from_utf8(body.to_vec())?;
-        let json: serde_json::Value = serde_json::from_str(&body)?;
+            if json["errors"] != serde_json::Value::Null {
+                panic!("Query {} returned an error: {}", query.name(), json);
+            }
 
-        if json["errors"] != serde_json::Value::Null {
-            panic!("Query {} returned an error: {}", query.name(), json);
+            pb.inc(1);
         }
 
-        pb.inc(1);
+        pb.finish_with_message("All queries validated");
     }
 
-    pb.finish_with_message("All queries validated");
-
+    let tests = query_config.test_count();
     for (i, (query, rate)) in query_config.runs().enumerate() {
         println!(
             "[{}] {}",
