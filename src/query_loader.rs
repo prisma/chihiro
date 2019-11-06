@@ -108,18 +108,6 @@ impl QueryConfig {
         self.queries.len() * self.rates.len()
     }
 
-    pub fn longest_name_length(&self) -> usize {
-        self.queries.iter().fold(0, |mut acc, q| {
-            let length = q.name.len();
-
-            if length > acc {
-                acc = length
-            }
-
-            acc
-        })
-    }
-
     pub fn queries(&self) -> impl Iterator<Item = (&Query, u64)> {
         self.queries
             .iter()

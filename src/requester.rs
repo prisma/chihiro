@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use tokio::timer::Interval;
 use crate::console_observer::ConsoleObserver;
 use indicatif::ProgressBar;
+use console::style;
 
 pub struct Requester {
     prisma_url: String,
@@ -39,8 +40,6 @@ impl Requester {
         duration: Duration,
         pb: ProgressBar,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let start = Instant::now();
-
         let json_data = json!({
             "query": query,
             "variables": {}
@@ -51,6 +50,7 @@ impl Requester {
 
         let mut rate_stream = Interval::new_interval(Duration::from_nanos(1_000_000_000 / rate));
 
+        let start = Instant::now();
         let mut tick = Instant::now();
         let mut sent_total = 0;
 
@@ -71,7 +71,8 @@ impl Requester {
             };
 
             pb.set_message(&format!(
-                "rate: {}/{}, {}",
+                "{}: {}/{}, {}",
+                style("rate").bold().dim(),
                 current_rate,
                 rate,
                 self.metrics()

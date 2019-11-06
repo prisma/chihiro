@@ -1,5 +1,6 @@
 use metrics_core::{Observer, Drain, Key};
 use hdrhistogram::Histogram;
+use console::style;
 
 pub struct ConsoleObserver {
     response_times: Histogram<u64>,
@@ -50,11 +51,16 @@ impl Drain<String> for ConsoleObserver {
         let p99 = (self.response_times.value_at_quantile(0.99) as f64 / 10000.0).round() / 100.0;
 
         let output = format!(
-            "success: {}, errors: {}, p50: {} ms, p95: {} ms, p99: {} ms",
+            "{}: {}, {}: {}, {}: {} ms, {}: {} ms, {}: {} ms",
+            style("success").bold().dim(),
             self.successful,
+            style("errors").bold().dim(),
             self.error,
+            style("p50").bold().dim(),
             p50,
+            style("p95").bold().dim(),
             p95,
+            style("p99").bold().dim(),
             p99,
         );
 

@@ -2,5 +2,5 @@ title = "Julius' test test"
 
 [queries]
 path = "./queries/"
-rates = [200, 400] # queries per second
+rates = [200, 400, 600, 1000] # queries per second
 duration = 5 # seconds
