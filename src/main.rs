@@ -1,11 +1,11 @@
 mod query_loader;
 mod requester;
+mod console_observer;
 
-use metrics_core::{Builder, Drain, Observe};
-use metrics_runtime::{observers::PrometheusBuilder, Receiver};
 use query_loader::QueryConfig;
 use requester::Requester;
 use structopt::StructOpt;
+use indicatif::{ProgressBar, ProgressStyle};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -27,23 +27,22 @@ pub struct Opt {
 async fn main() -> Result<()> {
     let opts = Opt::from_args();
 
-    let receiver = Receiver::builder().build()?;
-    let cont = receiver.controller();
-    receiver.install();
-
     let query_config = QueryConfig::new(opts.query_file)?;
-    let requester = Requester::new(opts.prisma_url);
+    let mut requester = Requester::new(opts.prisma_url)?;
 
-    for (query, rate) in query_config.queries() {
-        println!("{} (rate: {})", query.name(), rate);
-        requester
-            .run(query.query(), rate, query_config.duration())
-            .await?;
+    let spinner_style = ProgressStyle::default_spinner()
+        .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+        .template("{prefix:.bold.cyan} {spinner:.green} [{elapsed_precise}] {wide_msg}");
 
-        let mut observer = PrometheusBuilder::new().build();
-        cont.observe(&mut observer);
+    let tests = query_config.test_count();
 
-        println!("{}", observer.drain());
+    for (i, (query, rate)) in query_config.queries().enumerate() {
+        let pb = ProgressBar::new(query_config.duration().as_secs());
+        pb.set_prefix(&format!("[{}/{}] {}", i + 1, tests, query.name()));
+        pb.set_style(spinner_style.clone());
+
+        requester.run(query.query(), rate, query_config.duration(), pb).await?;
+        requester.clear_metrics()?;
     }
 
     Ok(())

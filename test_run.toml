@@ -3,4 +3,4 @@ title = "Julius' test test"
 [queries]
 path = "./queries/02_scalarFilter/02_artistNameEndsWithString_fast.graphql"
 rates = [200, 400, 600] # queries per second
-duration = 10 # seconds
+duration = 15 # seconds

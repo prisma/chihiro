@@ -10,7 +10,7 @@ use std::{
 struct TestQueries {
     path: PathBuf,
     rates: Vec<u64>,
-    duration: Option<u64>,
+    duration: u64,
 }
 
 #[derive(Deserialize)]
@@ -23,7 +23,7 @@ struct TestConfig {
 pub struct QueryConfig {
     queries: Vec<Query>,
     rates: Vec<u64>,
-    duration: Option<Duration>,
+    duration: Duration,
     title: String,
 }
 
@@ -93,13 +93,17 @@ impl QueryConfig {
         Ok(Self {
             queries,
             rates: config.queries.rates,
-            duration: config.queries.duration.map(Duration::from_secs),
+            duration: Duration::from_secs(config.queries.duration),
             title: config.title,
         })
     }
 
-    pub fn duration(&self) -> Option<Duration> {
+    pub fn duration(&self) -> Duration {
         self.duration
+    }
+
+    pub fn test_count(&self) -> usize {
+        self.queries.len() * self.rates.len()
     }
 
     pub fn queries(&self) -> impl Iterator<Item = (&Query, u64)> {
