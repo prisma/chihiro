@@ -1,0 +1,16 @@
+version: "3"
+services:
+  db:
+    image: timms/postgres-logging:10.3
+    container_name: psql
+    restart: always
+    command: postgres -c 'max_connections=1000'
+    volumes:
+      - ./chinook/postgres:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: prisma
+    ports:
+      - "5432:5432"
+volumes:
+  postgres:
