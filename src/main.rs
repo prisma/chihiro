@@ -6,6 +6,7 @@ use query_loader::QueryConfig;
 use requester::Requester;
 use structopt::StructOpt;
 use indicatif::{ProgressBar, ProgressStyle};
+use console::{pad_str, Alignment};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -32,13 +33,21 @@ async fn main() -> Result<()> {
 
     let spinner_style = ProgressStyle::default_spinner()
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
-        .template("{prefix:.bold.cyan} {spinner:.green} [{elapsed_precise}] {wide_msg}");
+        .template("{prefix:.bold.cyan} [{elapsed_precise}] {wide_msg}");
 
     let tests = query_config.test_count();
+    let pad_len = query_config.longest_name_length();
 
     for (i, (query, rate)) in query_config.queries().enumerate() {
         let pb = ProgressBar::new(query_config.duration().as_secs());
-        pb.set_prefix(&format!("[{}/{}] {}", i + 1, tests, query.name()));
+
+        pb.set_prefix(&format!(
+            "[{}/{}] {}",
+            i + 1,
+            tests,
+            pad_str(query.name(), pad_len, Alignment::Left, None)
+        ));
+
         pb.set_style(spinner_style.clone());
 
         requester.run(query.query(), rate, query_config.duration(), pb).await?;

@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
+use walkdir::WalkDir;
 
 #[derive(Deserialize)]
 struct TestQueries {
@@ -56,9 +57,10 @@ impl QueryConfig {
         let config: TestConfig = toml::from_str(&config_str)?;
         let mut queries = Vec::new();
 
-        if let Ok(entries) = config.queries.path.read_dir() {
-            for entry in entries {
-                let path = entry?.path();
+        if config.queries.path.is_dir() {
+            for entry in WalkDir::new(&config.queries.path) {
+                let entry = entry?;
+                let path = entry.path();
 
                 if let Some("graphql") = path.extension().and_then(|s| s.to_str()) {
                     let mut f = File::open(&path)?;
@@ -104,6 +106,18 @@ impl QueryConfig {
 
     pub fn test_count(&self) -> usize {
         self.queries.len() * self.rates.len()
+    }
+
+    pub fn longest_name_length(&self) -> usize {
+        self.queries.iter().fold(0, |mut acc, q| {
+            let length = q.name.len();
+
+            if length > acc {
+                acc = length
+            }
+
+            acc
+        })
     }
 
     pub fn queries(&self) -> impl Iterator<Item = (&Query, u64)> {
