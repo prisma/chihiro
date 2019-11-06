@@ -13,9 +13,6 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[derive(Debug, StructOpt, Clone)]
 /// Prisma Load Tester
 pub struct Opt {
-    /// Request timeout in seconds.
-    #[structopt(long)]
-    timeout: Option<u64>,
     /// The Prisma URL. Default: http://localhost:4466/
     #[structopt(long)]
     prisma_url: Option<String>,

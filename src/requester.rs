@@ -4,7 +4,7 @@ use metrics_runtime::Receiver;
 use metrics_core::{Drain, Observe};
 use serde_json::json;
 use std::time::{Duration, Instant};
-use tokio::timer::Interval;
+use tokio::{timer::Interval, future::FutureExt};
 use crate::console_observer::ConsoleObserver;
 use indicatif::ProgressBar;
 use console::style;
@@ -91,13 +91,13 @@ impl Requester {
 
             tokio::spawn(async move {
                 let start = Instant::now();
-                let res = requesting.await;
+                let res = requesting.timeout(Duration::from_secs(10)).await;
 
                 sink.record_timing("response_time", start, Instant::now());
 
                 match res {
-                    Ok(_) => sink.counter("success").increment(),
-                    Err(_) => sink.counter("error").increment(),
+                    Ok(Ok(_)) => sink.counter("success").increment(),
+                    Ok(Err(_)) | Err(_) => sink.counter("error").increment(),
                 }
             });
 
