@@ -8,30 +8,30 @@ use std::{
 use walkdir::WalkDir;
 
 #[derive(Deserialize)]
-struct TestQueries {
+struct TestRun {
     path: PathBuf,
-    rates: Vec<u64>,
-    duration: u64,
+    rps: Vec<u64>,
 }
 
 #[derive(Deserialize)]
 struct TestConfig {
-    title: String,
-    queries: TestQueries,
+    identifier: String,
+    duration_per_test: u64,
+    test_runs: Vec<TestRun>,
 }
 
 #[derive(Debug)]
 pub struct QueryConfig {
     queries: Vec<Query>,
-    rates: Vec<u64>,
     duration: Duration,
-    title: String,
+    identifier: String,
 }
 
 #[derive(Debug)]
 pub struct Query {
     name: String,
     query: String,
+    rps: Vec<u64>,
 }
 
 impl Query {
@@ -41,6 +41,10 @@ impl Query {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn rps(&self) -> &[u64] {
+        self.rps.as_slice()
     }
 }
 
@@ -57,46 +61,50 @@ impl QueryConfig {
         let config: TestConfig = toml::from_str(&config_str)?;
         let mut queries = Vec::new();
 
-        if config.queries.path.is_dir() {
-            for entry in WalkDir::new(&config.queries.path) {
-                let entry = entry?;
-                let path = entry.path();
+        for test_run in config.test_runs {
+            if test_run.path.is_dir() {
+                for entry in WalkDir::new(&test_run.path) {
+                    let entry = entry?;
+                    let path = entry.path();
 
-                if let Some("graphql") = path.extension().and_then(|s| s.to_str()) {
-                    let mut f = File::open(&path)?;
-                    let mut query = String::new();
-                    f.read_to_string(&mut query)?;
+                    if let Some("graphql") = path.extension().and_then(|s| s.to_str()) {
+                        let mut f = File::open(&path)?;
+                        let mut query = String::new();
+                        f.read_to_string(&mut query)?;
 
-                    let name = path
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .map(|s| s.to_string())
-                        .unwrap();
+                        let name = path
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .map(|s| s.to_string())
+                            .unwrap();
 
-                    queries.push(Query { name, query });
+                        queries.push(Query {
+                            name,
+                            query,
+                            rps: test_run.rps.clone(),
+                        });
+                    }
                 }
+            } else {
+                let mut f = File::open(&test_run.path)?;
+                let mut query = String::new();
+                f.read_to_string(&mut query)?;
+
+                let name = test_run
+                    .path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.to_string())
+                    .unwrap();
+
+                queries.push(Query { name, query, rps: test_run.rps });
             }
-        } else {
-            let mut f = File::open(&config.queries.path)?;
-            let mut query = String::new();
-            f.read_to_string(&mut query)?;
-
-            let name = config
-                .queries
-                .path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .map(|s| s.to_string())
-                .unwrap();
-
-            queries.push(Query { name, query });
         }
 
         Ok(Self {
             queries,
-            rates: config.queries.rates,
-            duration: Duration::from_secs(config.queries.duration),
-            title: config.title,
+            duration: Duration::from_secs(config.duration_per_test),
+            identifier: config.identifier,
         })
     }
 
@@ -109,15 +117,10 @@ impl QueryConfig {
     }
 
     pub fn test_count(&self) -> usize {
-        self.queries.len() * self.rates.len()
+        self.queries.iter().fold(0, |acc, q| acc + q.rps.len())
     }
 
     pub fn queries(&self) -> impl Iterator<Item = &Query> {
         self.queries.iter()
-    }
-
-    pub fn runs(&self) -> impl Iterator<Item = (&Query, u64)> {
-        self.queries()
-            .flat_map(move |q| self.rates.iter().map(move |r| (q, *r)))
     }
 }

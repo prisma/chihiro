@@ -1,6 +1,10 @@
-title = "Julius' test test"
+identifier = "master_test_run"
+duration_per_test = 240 # seconds
 
-[queries]
-path = "./queries/"
-rates = [200, 400, 600, 1000] # queries per second
-duration = 5 # seconds
+[[test_runs]]
+path = "./queries/01_expandingRelations/"
+rps = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 4000]
+
+[[test_runs]]
+path = "./queries/02_scalarFilter/"
+rps = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 4000]

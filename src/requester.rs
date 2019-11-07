@@ -6,7 +6,6 @@ use serde_json::json;
 use std::time::{Duration, Instant};
 use tokio::{timer::Interval, future::FutureExt};
 use crate::console_observer::ConsoleObserver;
-use indicatif::ProgressBar;
 use console::style;
 
 pub struct Requester {
@@ -38,7 +37,7 @@ impl Requester {
         query: &str,
         rate: u64,
         duration: Duration,
-        pb: ProgressBar,
+        pb: crate::OptionalBar,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut rate_stream = Interval::new_interval(Duration::from_nanos(1_000_000_000 / rate));
 

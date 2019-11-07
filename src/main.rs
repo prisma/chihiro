@@ -22,6 +22,48 @@ pub struct Opt {
     query_file: String,
     #[structopt(long)]
     validate: bool,
+    #[structopt(long)]
+    show_progress: bool,
+}
+
+pub struct OptionalBar {
+    inner: Option<ProgressBar>,
+}
+
+impl From<ProgressBar> for OptionalBar {
+    fn from(pb: ProgressBar) -> Self {
+        Self { inner: Some(pb) }
+    }
+}
+
+impl OptionalBar {
+    pub fn empty() -> Self {
+        Self { inner: None }
+    }
+
+    pub fn set_style(&self, style: ProgressStyle) {
+        if let Some(ref inner) = self.inner {
+            inner.set_style(style);
+        }
+    }
+
+    pub fn inc(&self, num: u64) {
+        if let Some(ref inner) = self.inner {
+            inner.inc(num);
+        }
+    }
+
+    pub fn set_message(&self, msg: &str) {
+        if let Some(ref inner) = self.inner {
+            inner.set_message(msg);
+        }
+    }
+
+    pub fn finish_with_message(&self, msg: &str) {
+        if let Some(ref inner) = self.inner {
+            inner.finish_with_message(msg);
+        }
+    }
 }
 
 #[tokio::main]
@@ -37,7 +79,12 @@ async fn main() -> Result<()> {
 
     if opts.validate {
         println!("Validating queries...");
-        let pb = ProgressBar::new(query_config.query_count() as u64);
+
+        let pb = if opts.show_progress {
+            OptionalBar::from(ProgressBar::new(query_config.query_count() as u64))
+        } else {
+            OptionalBar::empty()
+        };
 
         for query in query_config.queries() {
             let res = requester.request(query.query()).await?;
@@ -56,19 +103,25 @@ async fn main() -> Result<()> {
     }
 
     let tests = query_config.test_count();
-    for (i, (query, rate)) in query_config.runs().enumerate() {
-        println!(
-            "[{}] {}",
-            style(&format!("{}/{}", i+1, tests)).bold().dim(),
-            query.name(),
-        );
+    for (i, query) in query_config.queries().enumerate() {
+        for rate in query.rps() {
+            println!(
+                "[{}] {}",
+                style(&format!("{}/{}", i+1, tests)).bold().dim(),
+                query.name(),
+            );
 
-        let pb = ProgressBar::new(query_config.duration().as_secs());
+            let pb = if opts.show_progress {
+                OptionalBar::from(ProgressBar::new(query_config.duration().as_secs()))
+            } else {
+                OptionalBar::empty()
+            };
 
-        pb.set_style(spinner_style.clone());
+            pb.set_style(spinner_style.clone());
 
-        requester.run(query.query(), rate, query_config.duration(), pb).await?;
-        requester.clear_metrics()?;
+            requester.run(query.query(), *rate, query_config.duration(), pb).await?;
+            requester.clear_metrics()?;
+        }
     }
 
     Ok(())
