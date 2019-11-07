@@ -1,6 +1,6 @@
-use metrics_core::{Observer, Drain, Key};
-use hdrhistogram::Histogram;
 use console::style;
+use hdrhistogram::Histogram;
+use metrics_core::{Drain, Key, Observer};
 
 pub struct ConsoleObserver {
     response_times: Histogram<u64>,
@@ -29,11 +29,11 @@ impl Observer for ConsoleObserver {
         match key.name().as_ref() {
             "success" => self.successful = value,
             "error" => self.error = value,
-            _ => ()
+            _ => (),
         }
     }
 
-    fn observe_gauge(&mut self, _: Key, _: i64) { }
+    fn observe_gauge(&mut self, _: Key, _: i64) {}
 
     fn observe_histogram(&mut self, key: Key, values: &[u64]) {
         if key.name().as_ref() == "response_time" {

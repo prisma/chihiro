@@ -1,11 +1,7 @@
+use super::TestConfig;
 use rand::Rng;
 use serde::Deserialize;
-use super::TestConfig;
-use std::{
-    collections::HashMap,
-    convert::TryFrom,
-    time::Duration,
-};
+use std::{collections::HashMap, convert::TryFrom, time::Duration};
 
 #[derive(Debug)]
 pub struct QueryConfig {
@@ -24,7 +20,7 @@ pub struct QueryVariable {
 pub struct Query {
     pub(super) name: String,
     pub(super) query: String,
-    pub(super) rps: Vec<u64>,
+    pub(super) rps: &'static [u64],
     pub(super) variables: HashMap<String, QueryVariable>,
 }
 
@@ -44,14 +40,13 @@ impl Query {
         &self.name
     }
 
-    pub fn rps(&self) -> &[u64] {
-        self.rps.as_slice()
+    pub fn rps(&self) -> &'static [u64] {
+        self.rps
     }
 }
 
 impl QueryConfig {
-    pub fn new(test_file: &str) -> crate::Result<Self>
-    {
+    pub fn new(test_file: &str) -> crate::Result<Self> {
         let mut config = TestConfig::try_from(test_file)?;
 
         Ok(Self {
@@ -75,5 +70,10 @@ impl QueryConfig {
 
     pub fn queries(&self) -> impl Iterator<Item = &Query> {
         self.queries.iter()
+    }
+
+    pub fn runs(&self) -> impl Iterator<Item = (&Query, u64)> {
+        self.queries()
+            .flat_map(move |q| q.rps().iter().map(move |r| (q, *r)))
     }
 }

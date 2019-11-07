@@ -1,13 +1,20 @@
+use crate::{
+    bar::OptionalBar,
+    config::{Query, QueryConfig},
+    console_observer::ConsoleObserver,
+};
+use console::style;
+use futures::stream::TryStreamExt;
 use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{client::HttpConnector, Body, Client};
-use metrics_runtime::Receiver;
 use metrics_core::{Drain, Observe};
+use metrics_runtime::Receiver;
 use serde_json::json;
-use std::{time::{Duration, Instant}, io::{Error, ErrorKind}};
-use futures::stream::TryStreamExt;
-use tokio::{timer::Interval, future::FutureExt};
-use crate::{console_observer::ConsoleObserver, config::{Query, QueryConfig}, bar::OptionalBar};
-use console::style;
+use std::{
+    io::{Error, ErrorKind},
+    time::{Duration, Instant},
+};
+use tokio::{future::FutureExt, timer::Interval};
 
 pub struct Requester {
     prisma_url: String,
@@ -19,27 +26,22 @@ impl Requester {
     pub fn new(prisma_url: Option<String>) -> crate::Result<Self> {
         let mut builder = Client::builder();
         builder.keep_alive(true);
+        builder.max_idle_per_host(1);
+        builder.keep_alive_timeout(Duration::from_millis(100));
 
         let client = builder.build(HttpConnector::new());
         let prisma_url = prisma_url.unwrap_or_else(|| String::from("http://localhost:4466/"));
 
         let receiver = Receiver::builder().build()?;
 
-        Ok(Self { prisma_url, client, receiver, })
+        Ok(Self {
+            prisma_url,
+            client,
+            receiver,
+        })
     }
 
-    pub fn clear_metrics(&mut self) -> crate::Result<()> {
-        self.receiver = Receiver::builder().build()?;
-        Ok(())
-    }
-
-    pub async fn run(
-        &self,
-        query: &Query,
-        rate: u64,
-        duration: Duration,
-        pb: crate::OptionalBar,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run(&self, query: &Query, rate: u64, duration: Duration, pb: &crate::OptionalBar) {
         let mut rate_stream = Interval::new_interval(Duration::from_nanos(1_000_000_000 / rate));
 
         let start = Instant::now();
@@ -48,7 +50,6 @@ impl Requester {
 
         while let Some(_) = rate_stream.next().await {
             if Instant::now().duration_since(start) >= duration {
-                pb.finish_with_message(&self.metrics());
                 break;
             }
 
@@ -62,33 +63,38 @@ impl Requester {
                 nanos => sent_total * 1_000_000_000 / nanos,
             };
 
+            let mut sink = self.receiver.sink();
+            let requesting = self.request(query);
+
             pb.set_message(&format!(
                 "{}: {}/{}, {}",
                 style("rate").bold().dim(),
                 current_rate,
                 rate,
-                self.metrics()
+                self.metrics(),
             ));
-
-            let mut sink = self.receiver.sink();
-            let requesting = self.request(query);
 
             tokio::spawn(async move {
                 let start = Instant::now();
-                let res = requesting.timeout(Duration::from_secs(10)).await;
+                let res = requesting.timeout(Duration::from_millis(500)).await;
 
                 sink.record_timing("response_time", start, Instant::now());
 
                 match res {
                     Ok(Ok(_)) => sink.counter("success").increment(),
-                    Ok(Err(_)) | Err(_) => sink.counter("error").increment(),
+                    Ok(Err(e)) => {
+                        println!("{:?}", e);
+                        sink.counter("error").increment()
+                    },
+                    Err(e) => {
+                        println!("{:?}", e);
+                        sink.counter("error").increment()
+                    }
                 }
             });
 
             sent_total += 1;
         }
-
-        Ok(())
     }
 
     pub async fn validate(&self, query_config: &QueryConfig, pb: OptionalBar) -> crate::Result<()> {
@@ -99,12 +105,11 @@ impl Requester {
             let json: serde_json::Value = serde_json::from_str(&body)?;
 
             if json["errors"] != serde_json::Value::Null {
-                return Err(
-                    Error::new(
-                        ErrorKind::InvalidData,
-                        format!("Query {} returned an error: {}", query.name(), json)
-                    ).into()
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    format!("Query {} returned an error: {}", query.name(), json),
                 )
+                .into());
             }
 
             pb.inc(1);
@@ -137,7 +142,7 @@ impl Requester {
         self.client.request(request)
     }
 
-    fn metrics(&self) -> String {
+    pub fn metrics(&self) -> String {
         let mut observer = ConsoleObserver::new();
         let cont = self.receiver.controller();
         cont.observe(&mut observer);

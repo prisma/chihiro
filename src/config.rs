@@ -8,15 +8,19 @@ use std::{
     convert::TryFrom,
     fs::File,
     io::Read,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
 
+static VERY_SLOW_RATES: &[u64] = &[25, 50, 75, 100, 125, 150, 175, 200, 225, 250];
+static SLOW_RATES: &[u64] = &[50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
+static MEDIUM_RATES: &[u64] = &[100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000];
+static FAST_RATES: &[u64] = &[200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 4000];
+static VERY_FAST_RATES: &[u64] = &[200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 4000];
 
 #[derive(Deserialize, Debug)]
 pub(super) struct TestRun {
     path: PathBuf,
-    rps: Vec<u64>,
     #[serde(default = "HashMap::new")]
     variables: HashMap<String, QueryVariable>,
 }
@@ -28,8 +32,7 @@ pub(super) struct TestConfig {
     test_run: Vec<TestRun>,
 }
 
-impl TryFrom<&str> for TestConfig
-{
+impl TryFrom<&str> for TestConfig {
     type Error = Box<dyn std::error::Error>;
 
     fn try_from(path: &str) -> crate::Result<Self> {
@@ -43,6 +46,31 @@ impl TryFrom<&str> for TestConfig
 }
 
 impl TestConfig {
+    fn parse_name(path: &Path) -> String {
+        path.file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+            .unwrap()
+    }
+
+    fn rps(name: &str) -> &'static [u64] {
+        if name.contains("very-slow") {
+            VERY_SLOW_RATES
+        } else if name.contains("slow") {
+            SLOW_RATES
+        } else if name.contains("medium") {
+            MEDIUM_RATES
+        } else if name.contains("fast") {
+            FAST_RATES
+        } else if name.contains("very-fast") {
+            VERY_FAST_RATES
+        } else {
+            panic!(
+                "File name should contain the query speed: (very-slow|slow|medium|fast|very-fast)"
+            )
+        }
+    }
+
     pub(super) fn take_queries(&mut self) -> crate::Result<Vec<Query>> {
         let mut queries = Vec::new();
 
@@ -57,16 +85,13 @@ impl TestConfig {
                         let mut query = String::new();
                         f.read_to_string(&mut query)?;
 
-                        let name = path
-                            .file_stem()
-                            .and_then(|s| s.to_str())
-                            .map(|s| s.to_string())
-                            .unwrap();
+                        let name = Self::parse_name(path);
+                        let rps = Self::rps(&name);
 
                         queries.push(Query {
                             name,
                             query,
-                            rps: test_run.rps.clone(),
+                            rps,
                             variables: test_run.variables.clone(),
                         });
                     }
@@ -76,17 +101,13 @@ impl TestConfig {
                 let mut query = String::new();
                 f.read_to_string(&mut query)?;
 
-                let name = test_run
-                    .path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .map(|s| s.to_string())
-                    .unwrap();
+                let name = Self::parse_name(&test_run.path);
+                let rps = Self::rps(&name);
 
                 queries.push(Query {
                     name,
                     query,
-                    rps: test_run.rps,
+                    rps,
                     variables: test_run.variables,
                 });
             }

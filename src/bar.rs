@@ -1,5 +1,6 @@
 use indicatif::{ProgressBar, ProgressStyle};
 
+#[derive(Clone, Debug)]
 pub struct OptionalBar {
     inner: Option<ProgressBar>,
 }
