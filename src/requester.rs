@@ -3,9 +3,10 @@ use hyper::{client::HttpConnector, Body, Client};
 use metrics_runtime::Receiver;
 use metrics_core::{Drain, Observe};
 use serde_json::json;
-use std::time::{Duration, Instant};
+use std::{time::{Duration, Instant}, io::{Error, ErrorKind}};
+use futures::stream::TryStreamExt;
 use tokio::{timer::Interval, future::FutureExt};
-use crate::{console_observer::ConsoleObserver, query_loader::Query};
+use crate::{console_observer::ConsoleObserver, config::{Query, QueryConfig}, bar::OptionalBar};
 use console::style;
 
 pub struct Requester {
@@ -86,6 +87,30 @@ impl Requester {
 
             sent_total += 1;
         }
+
+        Ok(())
+    }
+
+    pub async fn validate(&self, query_config: &QueryConfig, pb: OptionalBar) -> crate::Result<()> {
+        for query in query_config.queries() {
+            let res = self.request(&query).await?;
+            let body = res.into_body().try_concat().await?;
+            let body = String::from_utf8(body.to_vec())?;
+            let json: serde_json::Value = serde_json::from_str(&body)?;
+
+            if json["errors"] != serde_json::Value::Null {
+                return Err(
+                    Error::new(
+                        ErrorKind::InvalidData,
+                        format!("Query {} returned an error: {}", query.name(), json)
+                    ).into()
+                )
+            }
+
+            pb.inc(1);
+        }
+
+        pb.finish_with_message("All queries validated");
 
         Ok(())
     }
