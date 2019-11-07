@@ -8,6 +8,7 @@ pub struct QueryConfig {
     pub(super) queries: Vec<Query>,
     pub(super) duration: Duration,
     pub(super) identifier: String,
+    pub(super) elastic_endpoint: String,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -53,11 +54,16 @@ impl QueryConfig {
             queries: config.take_queries()?,
             duration: Duration::from_secs(config.duration_per_test),
             identifier: config.identifier,
+            elastic_endpoint: config.elastic_endpoint,
         })
     }
 
     pub fn duration(&self) -> Duration {
         self.duration
+    }
+
+    pub fn elastic_endpoint(&self) -> &str {
+        self.elastic_endpoint.as_str()
     }
 
     pub fn query_count(&self) -> usize {

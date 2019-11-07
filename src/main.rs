@@ -1,7 +1,9 @@
 mod bar;
 mod config;
 mod console_observer;
+mod json_observer;
 mod requester;
+mod metrics_sender;
 
 use bar::OptionalBar;
 use config::QueryConfig;
@@ -10,6 +12,8 @@ use indicatif::{ProgressBar, ProgressStyle};
 use requester::Requester;
 use structopt::StructOpt;
 use tokio::runtime::Runtime;
+use metrics_sender::MetricsSender;
+use std::env;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -26,12 +30,16 @@ pub struct Opt {
     validate: bool,
     #[structopt(long)]
     show_progress: bool,
+    #[structopt(long)]
+    metrics_database: String,
 }
 
 fn main() -> Result<()> {
     let opts = Opt::from_args();
-
     let query_config = QueryConfig::new(&opts.query_file)?;
+
+    let elastic_user = env::var("ELASTIC_USER").expect("ELASTIC_USER not set");
+    let elastic_password = env::var("ELASTIC_PW").expect("ELASTIC_PW not set");
 
     let spinner_style = ProgressStyle::default_spinner()
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
@@ -59,9 +67,17 @@ fn main() -> Result<()> {
 
     let tests = query_config.test_count();
 
-    for (i, (query, rate)) in query_config.runs().enumerate() {
-        let requester = Requester::new(opts.prisma_url.clone())?;
+    let metrics_sender = MetricsSender::new(
+        query_config.elastic_endpoint(),
+        &opts.metrics_database,
+        &elastic_user,
+        &elastic_password,
+    );
+
+    for (i, (query, rps)) in query_config.runs().enumerate() {
         let rt = Runtime::new()?;
+
+        let requester = Requester::new(opts.prisma_url.clone())?;
 
         let pb = if opts.show_progress {
             OptionalBar::from(ProgressBar::new(query_config.duration().as_secs()))
@@ -79,12 +95,14 @@ fn main() -> Result<()> {
 
         rt.block_on(async {
             requester
-                .run(&query, rate, query_config.duration(), &pb)
+                .run(&query, rps, query_config.duration(), &pb)
                 .await;
-        });
 
-        pb.finish_with_message(&requester.metrics());
+            let metrics = requester.json_metrics(query.name(), rps).await?;
+            metrics_sender.send(&metrics).await
+        })?;
 
+        pb.finish_with_message(&requester.console_metrics());
         rt.shutdown_now();
     }
 

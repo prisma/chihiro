@@ -2,6 +2,7 @@ use crate::{
     bar::OptionalBar,
     config::{Query, QueryConfig},
     console_observer::ConsoleObserver,
+    json_observer::{JsonObserver, ResponseTime},
 };
 use console::style;
 use futures::stream::TryStreamExt;
@@ -10,6 +11,7 @@ use hyper::{client::HttpConnector, Body, Client};
 use metrics_core::{Drain, Observe};
 use metrics_runtime::Receiver;
 use serde_json::json;
+use serde::Deserialize;
 use std::{
     io::{Error, ErrorKind},
     time::{Duration, Instant},
@@ -20,6 +22,13 @@ pub struct Requester {
     prisma_url: String,
     client: Client<HttpConnector>,
     receiver: Receiver,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ServerInfo {
+    pub commit: String,
+    pub version: String,
+    pub primary_connector: String,
 }
 
 impl Requester {
@@ -41,8 +50,8 @@ impl Requester {
         })
     }
 
-    pub async fn run(&self, query: &Query, rate: u64, duration: Duration, pb: &crate::OptionalBar) {
-        let mut rate_stream = Interval::new_interval(Duration::from_nanos(1_000_000_000 / rate));
+    pub async fn run(&self, query: &Query, rps: u64, duration: Duration, pb: &crate::OptionalBar) {
+        let mut rate_stream = Interval::new_interval(Duration::from_nanos(1_000_000_000 / rps));
 
         let start = Instant::now();
         let mut tick = Instant::now();
@@ -68,10 +77,10 @@ impl Requester {
 
             pb.set_message(&format!(
                 "{}: {}/{}, {}",
-                style("rate").bold().dim(),
+                style("rps").bold().dim(),
                 current_rate,
-                rate,
-                self.metrics(),
+                rps,
+                self.console_metrics(),
             ));
 
             tokio::spawn(async move {
@@ -134,7 +143,6 @@ impl Requester {
 
         let content_length = format!("{}", payload.len());
         builder.header(CONTENT_LENGTH, &content_length);
-
         builder.header(CONTENT_TYPE, "application/json");
 
         let request = builder.body(Body::from(payload)).unwrap();
@@ -142,11 +150,32 @@ impl Requester {
         self.client.request(request)
     }
 
-    pub fn metrics(&self) -> String {
+    pub async fn server_info(&self) -> crate::Result<ServerInfo> {
+        let mut builder = hyper::Request::builder();
+        builder.uri(dbg!(&format!("{}server_info", self.prisma_url)));
+        builder.method("GET");
+
+        let request = builder.body(Body::empty())?;
+        let res = self.client.request(request).await?;
+        let body = res.into_body().try_concat().await?;
+
+        Ok(serde_json::from_slice(&body)?)
+    }
+
+    pub fn console_metrics(&self) -> String {
         let mut observer = ConsoleObserver::new();
         let cont = self.receiver.controller();
         cont.observe(&mut observer);
 
         observer.drain()
+    }
+
+    pub async fn json_metrics(&self, query_name: &str, rps: u64) -> crate::Result<ResponseTime> {
+        let server_info = self.server_info().await?;
+        let mut observer = JsonObserver::new(server_info, query_name, rps);
+        let cont = self.receiver.controller();
+
+        cont.observe(&mut observer);
+        Ok(observer.drain())
     }
 }

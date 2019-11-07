@@ -28,6 +28,7 @@ pub(super) struct TestRun {
 #[derive(Deserialize, Debug)]
 pub(super) struct TestConfig {
     identifier: String,
+    elastic_endpoint: String,
     duration_per_test: u64,
     test_run: Vec<TestRun>,
 }

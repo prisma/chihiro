@@ -19,20 +19,28 @@ the database, preferably in release mode.
 Edit a test file, describing where to find the tests and how to run them:
 
 ``` toml
-title = "A new test"
+identifier = "master_test_run"
+duration_per_test = 240 # seconds
+elastic_endpoint = "https://16a31d8b2f8042df82b75bd7759edb00.eu-central-1.aws.cloud.es.io:9243/"
 
-[queries]
-path = "./queries/" # If directory, will recursively run all files with `graphql` extension
-rates = [200, 400, 600, 1000] # Different rates to run, requests per second.
-duration = 300 # seconds
+[[test_run]]
+path = "./queries/" # runs all queries from all subdirs
+[test_run.variables.artist_id]
+minimum = 1 # we randomise every $artist_id in queries, starting from this
+maximum = 275 # ... and ending to this
+[test_run.variables.track_id]
+minimum = 1 # randomise $track_id in queries, starting from this
+maximum = 3503 # ... and ending to this
 ```
 
 Compile chihiro in release mode (important) and run the tests against the
 Prisma server.
 
+To be able to store anything to the elasticsearch database, you need the login
+credentials set into `ELASTIC_USER` and `ELASTIC_PW` env vars.
+
+
 ``` bash
 > cargo build --release
-> ./target/debug/chihiro --prisma-url http://localhost:4466/ --query-file file.toml
+> ./target/debug/chihiro --prisma-url http://localhost:4466/ --query-file test_run.toml --show-progress --metrics-database response_times
 ```
-
-TODO: The results will be stored to ElasticSearch.

@@ -9,7 +9,9 @@ edition = "2018"
 [dependencies]
 tokio = "0.2.0-alpha.6"
 futures-preview = { version = "0.3.0-alpha.19", features = ["compat"] }
-hyper = { git = "https://github.com/hyperium/hyper", features = ["unstable-stream"] }
+hyper = { version = "0.13.0-alpha.4", features = ["unstable-stream"] }
+hyper-tls = "0.4.0-alpha.4"
+base64 = "0.11"
 structopt = "0.3"
 indicatif = "0.13"
 metrics-runtime = "0.12"
@@ -24,4 +26,4 @@ hdrhistogram = "6.3"
 walkdir = "2"
 console = "0.9"
 rand = "0.7"
-lazy_static = "1.4"
+chrono = "0.4"
