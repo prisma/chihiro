@@ -1,10 +1,13 @@
 identifier = "master_test_run"
-duration_per_test = 240 # seconds
+duration_per_test = 5 # seconds
 
-[[test_runs]]
+[[test_run]]
 path = "./queries/01_expandingRelations/"
 rps = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 4000]
+[test_run.variables.artist_id]
+minimum = 1
+maximum = 275
 
-[[test_runs]]
+[[test_run]]
 path = "./queries/02_scalarFilter/"
 rps = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 4000]

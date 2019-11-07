@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
         };
 
         for query in query_config.queries() {
-            let res = requester.request(query.query()).await?;
+            let res = requester.request(&query).await?;
             let body = res.into_body().try_concat().await?;
             let body = String::from_utf8(body.to_vec())?;
             let json: serde_json::Value = serde_json::from_str(&body)?;
@@ -119,7 +119,7 @@ async fn main() -> Result<()> {
 
             pb.set_style(spinner_style.clone());
 
-            requester.run(query.query(), *rate, query_config.duration(), pb).await?;
+            requester.run(&query, *rate, query_config.duration(), pb).await?;
             requester.clear_metrics()?;
         }
     }

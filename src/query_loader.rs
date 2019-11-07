@@ -4,20 +4,24 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
     time::Duration,
+    collections::HashMap,
 };
 use walkdir::WalkDir;
+use rand::Rng;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct TestRun {
     path: PathBuf,
     rps: Vec<u64>,
+    #[serde(default = "HashMap::new")]
+    variables: HashMap<String, QueryVariable>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct TestConfig {
     identifier: String,
     duration_per_test: u64,
-    test_runs: Vec<TestRun>,
+    test_run: Vec<TestRun>,
 }
 
 #[derive(Debug)]
@@ -27,16 +31,28 @@ pub struct QueryConfig {
     identifier: String,
 }
 
+#[derive(Deserialize, Debug, Clone, Copy)]
+pub struct QueryVariable {
+    minimum: u64,
+    maximum: u64,
+}
+
 #[derive(Debug)]
 pub struct Query {
     name: String,
     query: String,
     rps: Vec<u64>,
+    variables: HashMap<String, QueryVariable>,
 }
 
 impl Query {
-    pub fn query(&self) -> &str {
-        &self.query
+    pub fn query(&self) -> String {
+        let mut rng = rand::thread_rng();
+
+        self.variables.iter().fold(self.query.clone(), |acc, (name, var)| {
+            let x = rng.gen_range(var.minimum, var.maximum);
+            acc.replace(&format!("${}", name), &format!("{}", x))
+        })
     }
 
     pub fn name(&self) -> &str {
@@ -61,7 +77,7 @@ impl QueryConfig {
         let config: TestConfig = toml::from_str(&config_str)?;
         let mut queries = Vec::new();
 
-        for test_run in config.test_runs {
+        for test_run in config.test_run {
             if test_run.path.is_dir() {
                 for entry in WalkDir::new(&test_run.path) {
                     let entry = entry?;
@@ -82,6 +98,7 @@ impl QueryConfig {
                             name,
                             query,
                             rps: test_run.rps.clone(),
+                            variables: test_run.variables.clone(),
                         });
                     }
                 }
@@ -97,7 +114,12 @@ impl QueryConfig {
                     .map(|s| s.to_string())
                     .unwrap();
 
-                queries.push(Query { name, query, rps: test_run.rps });
+                queries.push(Query {
+                    name,
+                    query,
+                    rps: test_run.rps,
+                    variables: test_run.variables,
+                });
             }
         }
 

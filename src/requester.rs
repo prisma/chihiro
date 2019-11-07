@@ -5,7 +5,7 @@ use metrics_core::{Drain, Observe};
 use serde_json::json;
 use std::time::{Duration, Instant};
 use tokio::{timer::Interval, future::FutureExt};
-use crate::console_observer::ConsoleObserver;
+use crate::{console_observer::ConsoleObserver, query_loader::Query};
 use console::style;
 
 pub struct Requester {
@@ -34,7 +34,7 @@ impl Requester {
 
     pub async fn run(
         &self,
-        query: &str,
+        query: &Query,
         rate: u64,
         duration: Duration,
         pb: crate::OptionalBar,
@@ -90,9 +90,9 @@ impl Requester {
         Ok(())
     }
 
-    pub fn request(&self, query: &str) -> hyper::client::ResponseFuture {
+    pub fn request(&self, query: &Query) -> hyper::client::ResponseFuture {
         let json_data = json!({
-            "query": query,
+            "query": query.query(),
             "variables": {}
         });
 

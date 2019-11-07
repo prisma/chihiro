@@ -1,5 +1,5 @@
 query {
-  findManyArtist(where: {id: 55}) {
+  findManyArtist(where: { id: $artist_id }) {
     Albums {
       Title
     }
