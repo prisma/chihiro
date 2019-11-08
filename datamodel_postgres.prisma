@@ -1,0 +1,39 @@
+datasource chinook {
+  provider = "postgresql"
+  url = "postgresql://postgres:prisma@localhost:5432/postgres"
+}
+
+model Artist {
+  id Int @id @map(name:"ArtistId")
+  Name String?
+  Albums Album[]
+}
+
+model Album {
+  id Int @id @map(name:"AlbumId")
+  Title String
+  Artist Artist @map(name:"ArtistId")
+  Tracks Track[]
+}
+
+model Track {
+  id Int @id @map(name:"TrackId")
+  Name String
+  Album Album? @map(name: "AlbumId")
+  MediaType MediaType @map(name: "MediaTypeId")
+  Genre Genre? @map(name: "GenreId")
+  Composer String?
+  Milliseconds Int
+  UnitPrice Float
+}
+
+model Genre {
+  id Int @id @map(name:"GenreId")
+  Name String?
+  Tracks Track[]
+}
+
+model MediaType {
+  id Int @id @map(name:"MediaTypeId")
+  Name String
+}
