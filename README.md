@@ -16,6 +16,10 @@ First start the database:
 After the database is up and running, start an instance of prisma pointing to
 the database, preferably in release mode.
 
+``` bash
+> RUST_LOG_FORMAT=devel RUST_LOG=info PRISMA_DML_PATH=datamodel_postgres.prisma prisma
+```
+
 Edit a test file, describing where to find the tests and how to run them:
 
 ``` toml

@@ -1,5 +1,5 @@
 identifier = "master_test_run"
-duration_per_test = 240 # seconds
+duration_per_test = 60 # seconds
 elastic_endpoint = "https://16a31d8b2f8042df82b75bd7759edb00.eu-central-1.aws.cloud.es.io:9243/"
 
 [[test_run]]

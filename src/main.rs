@@ -8,6 +8,7 @@ mod metrics_sender;
 use bar::OptionalBar;
 use config::QueryConfig;
 use console::style;
+use chrono::Duration;
 use indicatif::{ProgressBar, ProgressStyle};
 use requester::Requester;
 use structopt::StructOpt;
@@ -72,6 +73,19 @@ fn main() -> Result<()> {
         &opts.metrics_database,
         &elastic_user,
         &elastic_password,
+    );
+
+    let total_tests = query_config.test_count();
+    let total_time = Duration::seconds((query_config.duration().as_secs() * (total_tests as u64)) as i64);
+    let total_hours = total_time.num_hours();
+    let total_minutes = total_time.num_minutes() - total_hours * 60;
+
+    println!(
+        "Running {} tests, {} seconds for each. Ready in about {} and {}...",
+        style(&format!("{}", total_tests)).bold(),
+        style(&format!("{}", query_config.duration().as_secs())).bold(),
+        style(&format!("{} hour(s)", total_hours)).bold(),
+        style(&format!("{} minute(s)", total_minutes)).bold(),
     );
 
     for (i, (query, rps)) in query_config.runs().enumerate() {
