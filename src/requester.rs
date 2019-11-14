@@ -36,7 +36,7 @@ impl Requester {
         let mut builder = Client::builder();
         builder.keep_alive(true);
         builder.max_idle_per_host(1);
-        builder.keep_alive_timeout(Duration::from_millis(100));
+        builder.keep_alive_timeout(Duration::from_secs(1));
 
         let client = builder.build(HttpConnector::new());
         let prisma_url = prisma_url.unwrap_or_else(|| String::from("http://localhost:4466/"));
@@ -85,20 +85,15 @@ impl Requester {
 
             tokio::spawn(async move {
                 let start = Instant::now();
-                let res = requesting.timeout(Duration::from_millis(500)).await;
+                let res = requesting.timeout(Duration::from_millis(2000)).await;
 
                 sink.record_timing("response_time", start, Instant::now());
 
                 match res {
                     Ok(Ok(_)) => sink.counter("success").increment(),
-                    Ok(Err(e)) => {
-                        println!("{:?}", e);
+                    Ok(Err(_)) | Err(_) => {
                         sink.counter("error").increment()
                     },
-                    Err(e) => {
-                        println!("{:?}", e);
-                        sink.counter("error").increment()
-                    }
                 }
             });
 

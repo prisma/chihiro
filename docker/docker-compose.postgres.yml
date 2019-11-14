@@ -1,6 +1,6 @@
 version: "3"
 services:
-  db:
+  psql:
     image: timms/postgres-logging:10.3
     container_name: psql
     restart: always
