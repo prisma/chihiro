@@ -50,7 +50,7 @@ impl Requester {
         })
     }
 
-    pub async fn run(&self, query: &Query, rps: u64, duration: Duration, pb: &crate::OptionalBar) {
+    pub async fn run(&self, query: &Query, rps: u64, duration: Duration, pb: &OptionalBar) {
         let mut rate_stream = Interval::new_interval(Duration::from_nanos(1_000_000_000 / rps));
 
         let start = Instant::now();
