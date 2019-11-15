@@ -1,4 +1,4 @@
-use hyper::{client::HttpConnector, Body, Client, Request};
+use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;
 use http::header::{CONTENT_LENGTH, CONTENT_TYPE, AUTHORIZATION};
 use crate::json_observer::ResponseTime;
@@ -8,7 +8,7 @@ use futures::stream::TryStreamExt;
 pub struct MetricsSender {
     endpoint: String,
     database: String,
-    client: Client<HttpsConnector<HttpConnector>>,
+    client: Client<HttpsConnector>,
     user: String,
     password: String,
 }
