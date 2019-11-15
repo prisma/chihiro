@@ -74,16 +74,22 @@ impl Requester {
 
             let mut sink = self.receiver.sink();
             let requesting = self.request(query);
-
-            pb.set_message(&format!(
-                "{}: {}/{}, {}",
-                style("rps").bold().dim(),
-                current_rate,
-                rps,
-                self.console_metrics(),
-            ));
+            let pb = pb.clone();
+            let cont = self.receiver.controller();
 
             tokio::spawn(async move {
+                let mut observer = ConsoleObserver::new();
+                cont.observe(&mut observer);
+                let metrics = observer.drain();
+
+                pb.set_message(&format!(
+                    "{}: {}/{}, {}",
+                    style("rps").bold().dim(),
+                    current_rate,
+                    rps,
+                    metrics,
+                ));
+
                 let start = Instant::now();
                 let res = requesting.timeout(Duration::from_millis(2000)).await;
 
