@@ -78,6 +78,11 @@ impl Requester {
             let cont = self.receiver.controller();
 
             tokio::spawn(async move {
+                let start = Instant::now();
+                let res = requesting.timeout(Duration::from_millis(2000)).await;
+
+                sink.record_timing("response_time", start, Instant::now());
+
                 let mut observer = ConsoleObserver::new();
                 cont.observe(&mut observer);
                 let metrics = observer.drain();
@@ -89,11 +94,6 @@ impl Requester {
                     rps,
                     metrics,
                 ));
-
-                let start = Instant::now();
-                let res = requesting.timeout(Duration::from_millis(2000)).await;
-
-                sink.record_timing("response_time", start, Instant::now());
 
                 match res {
                     Ok(Ok(_)) => sink.counter("success").increment(),
