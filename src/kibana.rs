@@ -1,9 +1,12 @@
-use walkdir::WalkDir;
 use crate::KibanaOpt;
-use std::{fs::File, io::Read, path::Path, convert::TryInto};
-use uuid::{Uuid, v1::{Context, Timestamp}};
 use chrono::Utc;
 use rand::Rng;
+use std::{convert::TryInto, fs::File, io::Read, path::Path};
+use uuid::{
+    v1::{Context, Timestamp},
+    Uuid,
+};
+use walkdir::WalkDir;
 
 pub fn generate(opts: KibanaOpt) -> crate::Result<()> {
     let mut template = String::new();
@@ -16,13 +19,20 @@ pub fn generate(opts: KibanaOpt) -> crate::Result<()> {
             let path = entry.path();
 
             if let Some("graphql") = path.extension().and_then(|s| s.to_str()) {
-                let panel = template.replace("@@query_name", &parse_name(&path)).replace("@@uuid", &uuid()?);
+                let panel = template
+                    .replace("@@query_name", &parse_name(&path))
+                    .replace("@@uuid", &uuid()?);
 
                 print!("{}", panel);
             }
         }
     } else {
-        print!("{}", template.replace("@@query_name", &parse_name(&opts.query_path)).replace("@@uuid", &uuid()?));
+        print!(
+            "{}",
+            template
+                .replace("@@query_name", &parse_name(&opts.query_path))
+                .replace("@@uuid", &uuid()?)
+        );
     }
 
     Ok(())
@@ -38,7 +48,7 @@ fn uuid() -> crate::Result<String> {
     let ts = Timestamp::from_unix(
         &context,
         now.timestamp().try_into()?,
-        now.timestamp_subsec_nanos()
+        now.timestamp_subsec_nanos(),
     );
 
     Ok(Uuid::new_v1(ts, &node_id)?.to_hyphenated().to_string())

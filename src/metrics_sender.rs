@@ -1,9 +1,9 @@
+use crate::json_observer::ResponseTime;
+use futures::stream::TryStreamExt;
+use http::header::{AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Body, Client, Request};
 use hyper_tls::HttpsConnector;
-use http::header::{CONTENT_LENGTH, CONTENT_TYPE, AUTHORIZATION};
-use crate::json_observer::ResponseTime;
 use std::io::{Error, ErrorKind};
-use futures::stream::TryStreamExt;
 
 pub struct MetricsSender {
     endpoint: String,
@@ -40,7 +40,10 @@ impl MetricsSender {
 
         builder.header(
             AUTHORIZATION,
-            &format!("Basic {}", base64::encode(&format!("{}:{}", self.user, self.password)))
+            &format!(
+                "Basic {}",
+                base64::encode(&format!("{}:{}", self.user, self.password))
+            ),
         );
 
         let request = builder.body(Body::from(payload)).unwrap();
@@ -54,8 +57,9 @@ impl MetricsSender {
 
             Err(Error::new(
                 ErrorKind::Other,
-                format!("Failed to send metrics: {}", json)
-            ).into())
+                format!("Failed to send metrics: {}", json),
+            )
+            .into())
         }
     }
 }

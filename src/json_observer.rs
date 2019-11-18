@@ -1,8 +1,8 @@
 use crate::requester::ServerInfo;
+use chrono::Utc;
 use hdrhistogram::Histogram;
 use metrics_core::{Drain, Key, Observer};
 use serde::Serialize;
-use chrono::Utc;
 
 pub struct JsonObserver {
     response_times: Histogram<u64>,

@@ -1,14 +1,15 @@
 mod bar;
+mod bench;
 mod config;
 mod console_observer;
 mod json_observer;
-mod requester;
-mod metrics_sender;
-mod bench;
 mod kibana;
+mod metrics_sender;
+mod requester;
 
-use structopt::StructOpt;
 use std::path::PathBuf;
+use structopt::StructOpt;
+use bench::Bench;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -46,7 +47,7 @@ pub enum Opt {
 
 fn main() -> Result<()> {
     match Opt::from_args() {
-        Opt::Bench(bench_opts) => bench::run(bench_opts),
+        Opt::Bench(bench_opts) => Bench::new(bench_opts)?.run(),
         Opt::Kibana(kibana_opts) => kibana::generate(kibana_opts),
     }
 }
