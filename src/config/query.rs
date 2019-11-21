@@ -21,7 +21,7 @@ pub struct QueryVariable {
 pub struct Query {
     pub(super) name: String,
     pub(super) query: String,
-    pub(super) rps: &'static [u64],
+    pub(super) rps: Vec<u64>,
     pub(super) variables: HashMap<String, QueryVariable>,
 }
 
@@ -41,8 +41,8 @@ impl Query {
         &self.name
     }
 
-    pub fn rps(&self) -> &'static [u64] {
-        self.rps
+    pub fn rps(&self) -> &[u64] {
+        self.rps.as_slice()
     }
 }
 

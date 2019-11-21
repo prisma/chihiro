@@ -26,11 +26,21 @@ pub(super) struct TestRun {
 }
 
 #[derive(Deserialize, Debug)]
+pub(super) struct RatesConfig {
+    very_slow: Option<Vec<u64>>,
+    slow: Option<Vec<u64>>,
+    medium: Option<Vec<u64>>,
+    fast: Option<Vec<u64>>,
+    very_fast: Option<Vec<u64>>,
+}
+
+#[derive(Deserialize, Debug)]
 pub(super) struct TestConfig {
     identifier: String,
     elastic_endpoint: String,
     duration_per_test: u64,
     test_run: Vec<TestRun>,
+    rates: RatesConfig,
 }
 
 impl TryFrom<&str> for TestConfig {
@@ -54,17 +64,17 @@ impl TestConfig {
             .unwrap()
     }
 
-    fn rps(name: &str) -> &'static [u64] {
+    fn rps(&self, name: &str) -> Vec<u64> {
         if name.contains("very-slow") {
-            VERY_SLOW_RATES
+            self.rates.very_slow.clone().unwrap_or_else(|| VERY_SLOW_RATES.to_vec())
         } else if name.contains("slow") {
-            SLOW_RATES
+            self.rates.slow.clone().unwrap_or_else(|| SLOW_RATES.to_vec())
         } else if name.contains("medium") {
-            MEDIUM_RATES
+            self.rates.medium.clone().unwrap_or_else(|| MEDIUM_RATES.to_vec())
         } else if name.contains("fast") {
-            FAST_RATES
+            self.rates.fast.clone().unwrap_or_else(|| FAST_RATES.to_vec())
         } else if name.contains("very-fast") {
-            VERY_FAST_RATES
+            self.rates.very_fast.clone().unwrap_or_else(|| VERY_FAST_RATES.to_vec())
         } else {
             panic!(
                 "File name should contain the query speed: (very-slow|slow|medium|fast|very-fast)"
@@ -87,7 +97,7 @@ impl TestConfig {
                         f.read_to_string(&mut query)?;
 
                         let name = Self::parse_name(path);
-                        let rps = Self::rps(&name);
+                        let rps = self.rps(&name);
 
                         queries.push(Query {
                             name,
@@ -103,7 +113,7 @@ impl TestConfig {
                 f.read_to_string(&mut query)?;
 
                 let name = Self::parse_name(&test_run.path);
-                let rps = Self::rps(&name);
+                let rps = self.rps(&name);
 
                 queries.push(Query {
                     name,

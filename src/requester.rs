@@ -72,7 +72,7 @@ impl Requester {
 
             let current_rate = match Instant::now().duration_since(start).as_nanos() {
                 0 => 0,
-                nanos => sent_total * 1_000_000_000 / nanos,
+                nanos => sent_total * 1_000_000_000 / nanos + 1,
             };
 
             let cont = self.receiver.controller();
