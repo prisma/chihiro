@@ -27,7 +27,7 @@ identifier = "master_test_run"
 duration_per_test = 240 # seconds
 elastic_endpoint = "https://16a31d8b2f8042df82b75bd7759edb00.eu-central-1.aws.cloud.es.io:9243/"
 
-[rates]
+[rates] # test runs, integer is requests per second
 very_slow = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250]
 slow = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250]
 medium = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000]
