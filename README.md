@@ -27,6 +27,13 @@ identifier = "master_test_run"
 duration_per_test = 240 # seconds
 elastic_endpoint = "https://16a31d8b2f8042df82b75bd7759edb00.eu-central-1.aws.cloud.es.io:9243/"
 
+[rates]
+very_slow = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250]
+slow = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250]
+medium = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000]
+fast = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 4000]
+very_fast = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 4000]
+
 [[test_run]]
 path = "./queries/" # runs all queries from all subdirs
 [test_run.variables.artist_id]
