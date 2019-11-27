@@ -141,7 +141,7 @@ impl Requester {
 
     pub async fn server_info(&self) -> crate::Result<ServerInfo> {
         let mut builder = hyper::Request::builder();
-        builder.uri(dbg!(&format!("{}server_info", self.prisma_url)));
+        builder.uri(&format!("{}server_info", self.prisma_url));
         builder.method("GET");
 
         let request = builder.body(Body::empty())?;
