@@ -45,6 +45,8 @@ impl Bench {
     }
 
     pub fn run(&self) -> crate::Result<()> {
+        self.print_info()?;
+
         if self.opts.validate {
             self.validate()?;
         }
@@ -98,6 +100,28 @@ impl Bench {
             pb.finish_with_message(&requester.console_metrics());
             rt.shutdown_now();
         }
+
+        Ok(())
+    }
+
+    fn print_info(&self) -> crate::Result<()> {
+        let requester = Requester::new(self.opts.prisma_url.clone())?;
+        let rt = Runtime::new()?;
+
+        rt.block_on(async {
+            let info = requester.server_info().await?;
+
+            println!(
+                "Server info :: commit: {}, version: {}, primary_connector: {}",
+                style(&format!("{}", info.commit)).bold(),
+                style(&format!("{}", info.version)).bold(),
+                style(&format!("{}", info.primary_connector)).bold(),
+            );
+
+            Ok::<(), Box<dyn std::error::Error>>(())
+        })?;
+
+        rt.shutdown_now();
 
         Ok(())
     }
