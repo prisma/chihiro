@@ -14,6 +14,7 @@ use serde::Deserialize;
 use serde_json::json;
 use async_std::task;
 use std::{
+    fmt,
     io::{Error, ErrorKind},
     time::{Duration, Instant},
     sync::{atomic::{AtomicUsize, Ordering}, Arc},
