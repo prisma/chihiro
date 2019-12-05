@@ -68,7 +68,7 @@ impl Bench {
         );
 
         for (i, (query, rps)) in self.query_config.runs().enumerate() {
-            let rt = Runtime::new()?;
+            let mut rt = Runtime::new()?;
 
             let requester = Requester::new(self.opts.prisma_url.clone())?;
 
@@ -97,7 +97,6 @@ impl Bench {
             })?;
 
             pb.finish_with_message(&requester.console_metrics());
-            rt.shutdown_now();
         }
 
         Ok(())
@@ -105,7 +104,7 @@ impl Bench {
 
     fn print_info(&self) -> crate::Result<()> {
         let requester = Requester::new(self.opts.prisma_url.clone())?;
-        let rt = Runtime::new()?;
+        let mut rt = Runtime::new()?;
 
         rt.block_on(async {
             let info = requester.server_info().await?;
@@ -120,14 +119,12 @@ impl Bench {
             Ok::<(), Box<dyn std::error::Error>>(())
         })?;
 
-        rt.shutdown_now();
-
         Ok(())
     }
 
     fn validate(&self) -> crate::Result<()> {
         let requester = Requester::new(self.opts.prisma_url.clone())?;
-        let rt = Runtime::new()?;
+        let mut rt = Runtime::new()?;
 
         rt.block_on(async {
             let show_progress = self.opts.show_progress;
@@ -141,8 +138,6 @@ impl Bench {
             println!("Validating queries...");
             requester.validate(&self.query_config, pb).await.unwrap();
         });
-
-        rt.shutdown_now();
 
         Ok(())
     }

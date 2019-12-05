@@ -5,20 +5,19 @@ use crate::{
     json_observer::{JsonObserver, ResponseTime},
 };
 use console::style;
-use futures::stream::TryStreamExt;
+use futures::stream::StreamExt;
 use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{client::HttpConnector, Body, Client};
 use metrics_core::{Drain, Observe};
 use metrics_runtime::{Receiver, Controller};
 use serde::Deserialize;
 use serde_json::json;
-use async_std::task;
 use std::{
     io::{Error, ErrorKind},
     time::{Duration, Instant},
     sync::{atomic::{AtomicUsize, Ordering}, Arc},
 };
-use tokio::{future::FutureExt, timer::Interval};
+use tokio::time::{timeout, interval};
 
 pub struct Requester {
     prisma_url: String,
@@ -53,17 +52,16 @@ impl Requester {
     }
 
     pub async fn run(&self, query: &Query, rps: u64, duration: Duration, pb: &OptionalBar) {
-        let mut rate_stream = Interval::new_interval(Duration::from_nanos(1_000_000_000 / rps));
+        let mut rate_stream = interval(Duration::from_nanos(1_000_000_000 / rps));
 
         let start = Instant::now();
         let mut tick = Instant::now();
         let mut sent_total = 0;
         let in_flight = Arc::new(AtomicUsize::new(0));
 
-        while let Some(_) = rate_stream.next().await {
-            if Instant::now().duration_since(start) >= duration {
-                break;
-            }
+        let mut handles = Vec::with_capacity((duration.as_secs() * rps) as usize);
+        while Instant::now().duration_since(start) < duration {
+            rate_stream.tick().await;
 
             if Instant::now().duration_since(tick) >= Duration::from_secs(1) {
                 tick = Instant::now();
@@ -84,10 +82,10 @@ impl Requester {
             let in_flight = in_flight.clone();
             in_flight.fetch_add(1, Ordering::SeqCst);
 
-            tokio::spawn(async move {
+            let jh = tokio::spawn(async move {
                 let start = Instant::now();
 
-                let res = requesting.timeout(Duration::from_millis(2000)).await;
+                let res = timeout(Duration::from_millis(2000), requesting).await;
                 sink.record_timing("response_time", start, Instant::now());
 
                 let metrics = Self::drain_metrics(cont);
@@ -108,20 +106,34 @@ impl Requester {
                 }
             });
 
+            handles.push(jh);
+
             sent_total += 1;
         }
 
-        while in_flight.load(Ordering::Relaxed) > 0 {
-            task::sleep(Duration::from_millis(100)).await;
+        for handle in handles {
+            handle.await.ok();
         }
     }
 
     pub async fn validate(&self, query_config: &QueryConfig, pb: OptionalBar) -> crate::Result<()> {
         for query in query_config.queries() {
             let res = self.request(&query).await?;
-            let body = res.into_body().try_concat().await?;
-            let body = String::from_utf8(body.to_vec())?;
-            let json: serde_json::Value = serde_json::from_str(&body)?;
+            let content_length: usize = res
+                .headers()
+                .get(CONTENT_LENGTH)
+                .and_then(|s| s.to_str().ok())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0);
+
+            let mut body: Vec<u8> = Vec::with_capacity(content_length);
+            let mut chunks = res.into_body();
+
+            while let Some(chunk) = chunks.next().await {
+                body.extend_from_slice(&chunk?);
+            }
+           
+            let json: serde_json::Value = serde_json::from_slice(body.as_slice())?;
 
             if json["errors"] != serde_json::Value::Null {
                 return Err(Error::new(
@@ -140,13 +152,26 @@ impl Requester {
     }
 
     pub async fn server_info(&self) -> crate::Result<ServerInfo> {
-        let mut builder = hyper::Request::builder();
-        builder.uri(&format!("{}server_info", self.prisma_url));
-        builder.method("GET");
+        let builder = hyper::Request::builder()
+            .uri(&format!("{}server_info", self.prisma_url))
+            .method("GET");
 
         let request = builder.body(Body::empty())?;
         let res = self.client.request(request).await?;
-        let body = res.into_body().try_concat().await?;
+
+        let content_length: usize = res
+            .headers()
+            .get(CONTENT_LENGTH)
+            .and_then(|s| s.to_str().ok())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+
+        let mut body: Vec<u8> = Vec::with_capacity(content_length);
+        let mut chunks = res.into_body();
+
+        while let Some(chunk) = chunks.next().await {
+            body.extend_from_slice(&chunk?);
+        }
 
         Ok(serde_json::from_slice(&body)?)
     }
@@ -167,14 +192,13 @@ impl Requester {
         });
 
         let payload = serde_json::to_string(&json_data).unwrap();
-
-        let mut builder = hyper::Request::builder();
-        builder.uri(&self.prisma_url);
-        builder.method("POST");
-
         let content_length = format!("{}", payload.len());
-        builder.header(CONTENT_LENGTH, &content_length);
-        builder.header(CONTENT_TYPE, "application/json");
+
+        let builder = hyper::Request::builder()
+            .uri(&self.prisma_url)
+            .method("POST")
+            .header(CONTENT_LENGTH, &content_length)
+            .header(CONTENT_TYPE, "application/json");
 
         let request = builder.body(Body::from(payload)).unwrap();
 
