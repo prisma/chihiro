@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+echo $HETZNER_KEY > hetzner_key
+
 ls -lisah
 
 DATABASE=$1
