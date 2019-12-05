@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo $HETZNER_KEY > hetzner_key
+echo -e "$HETZNER_KEY" > hetzner_key
 chmod 0644 hetzner_key
 
 DATABASE=$1
