@@ -3,9 +3,7 @@ use bar::OptionalBar;
 use chrono::Duration;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{
-    env, io,
-};
+use std::{env, io};
 use tokio::runtime::Runtime;
 
 pub struct Bench {
@@ -81,9 +79,10 @@ impl Bench {
             };
 
             println!(
-                "[{}] {}",
+                "[{}] {} ({} rps)",
                 style(&format!("{}/{}", i + 1, tests)).bold().dim(),
                 query.name(),
+                rps,
             );
 
             pb.set_style(self.spinner.clone());
