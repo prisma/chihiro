@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 echo $HETZNER_KEY > hetzner_key
-
-ls -lisah
+chmod 0644 hetzner_key
 
 DATABASE=$1
 
