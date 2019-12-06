@@ -1,6 +1,0 @@
-query equalString {
-  findManyArtist(where: { Name: "Queen"}) {
-    id
-    Name
-  }
-}

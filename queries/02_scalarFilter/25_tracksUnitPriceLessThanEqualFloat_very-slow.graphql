@@ -1,7 +1,0 @@
-#Ignore Document
-query {
-  findManyTrack(where: { UnitPrice_lte: 0.50}) {
-    id
-    Name
-  }
-}

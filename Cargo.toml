@@ -7,11 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = "0.2.0-alpha.6"
+tokio = { version = "0.2", features = ["rt-threaded", "time", "macros"] }
 futures = "0.3"
 async-std = "1"
-hyper = { git = "https://github.com/hyperium/hyper/", features = ["unstable-stream"] }
-hyper-tls = { git = "https://github.com/pimeys/hyper-tls/", branch = "hyper-master" }
+hyper = { git = "https://github.com/hyperium/hyper/" }
+hyper-tls = { git = "https://github.com/hyperium/hyper-tls/" }
 base64 = "0.11"
 structopt = "0.3"
 indicatif = "0.13"
@@ -21,7 +21,7 @@ metrics = "0.12"
 serde = "1"
 serde_json = "1"
 serde_derive = "1"
-http = "0.1"
+http = "0.2"
 elastic = "~0.21.0-pre.5"
 toml = "0.5"
 hdrhistogram = "6.3"

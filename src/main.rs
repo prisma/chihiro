@@ -8,10 +8,10 @@ mod metrics_sender;
 mod requester;
 mod server;
 
-use std::path::PathBuf;
-use structopt::StructOpt;
 use bench::Bench;
 use server::Server;
+use std::path::PathBuf;
+use structopt::StructOpt;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -60,9 +60,10 @@ pub enum Opt {
     Setup(SetupOpt),
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     match Opt::from_args() {
-        Opt::Bench(bench_opts) => Bench::new(bench_opts)?.run(),
+        Opt::Bench(bench_opts) => Bench::new(bench_opts)?.run().await,
         Opt::Kibana(kibana_opts) => kibana::generate(kibana_opts),
         Opt::Setup(setup_opts) => Server::new(setup_opts)?.setup(),
     }

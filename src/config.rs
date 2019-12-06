@@ -66,15 +66,30 @@ impl TestConfig {
 
     fn rps(&self, name: &str) -> Vec<u64> {
         if name.contains("very-slow") {
-            self.rates.very_slow.clone().unwrap_or_else(|| VERY_SLOW_RATES.to_vec())
+            self.rates
+                .very_slow
+                .clone()
+                .unwrap_or_else(|| VERY_SLOW_RATES.to_vec())
         } else if name.contains("slow") {
-            self.rates.slow.clone().unwrap_or_else(|| SLOW_RATES.to_vec())
+            self.rates
+                .slow
+                .clone()
+                .unwrap_or_else(|| SLOW_RATES.to_vec())
         } else if name.contains("medium") {
-            self.rates.medium.clone().unwrap_or_else(|| MEDIUM_RATES.to_vec())
+            self.rates
+                .medium
+                .clone()
+                .unwrap_or_else(|| MEDIUM_RATES.to_vec())
         } else if name.contains("fast") {
-            self.rates.fast.clone().unwrap_or_else(|| FAST_RATES.to_vec())
+            self.rates
+                .fast
+                .clone()
+                .unwrap_or_else(|| FAST_RATES.to_vec())
         } else if name.contains("very-fast") {
-            self.rates.very_fast.clone().unwrap_or_else(|| VERY_FAST_RATES.to_vec())
+            self.rates
+                .very_fast
+                .clone()
+                .unwrap_or_else(|| VERY_FAST_RATES.to_vec())
         } else {
             panic!(
                 "File name should contain the query speed: (very-slow|slow|medium|fast|very-fast)"

@@ -1,7 +1,0 @@
-#Ignore Document
-query {
-  findManyTrack(where: { Milliseconds: 343719}) {
-    id
-    Name
-  }
-}

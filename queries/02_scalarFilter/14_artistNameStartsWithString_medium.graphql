@@ -1,7 +1,0 @@
-
-query {
-  findManyArtist(where: { Name_starts_with: "Mi"}) {
-    id
-    Name
-  }
-}
