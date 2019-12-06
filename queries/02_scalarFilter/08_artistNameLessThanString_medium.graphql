@@ -1,6 +1,0 @@
-query {
-  findManyArtist(where: { Name_lt: "Black Sabbath"}) {
-    id
-    Name
-  }
-}

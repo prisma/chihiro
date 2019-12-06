@@ -1,8 +1,0 @@
-query {
-  findManyArtist(where: { Name_not_ends_with: "avis"}) {
-    id
-    Name
-  }
-}
-
-# this returns a ton of data

@@ -1,7 +1,0 @@
-#Ignore Document
-query {
-  findManyArtist(where: { Albums_every: { Title_contains: "itches"}}) {
-    id
-    Name
-  }
-}

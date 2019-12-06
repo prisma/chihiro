@@ -1,6 +1,0 @@
-query {
-  findManyAlbum(where: { Tracks_some: { Name_ends_with: "rew"}}) {
-    id
-    Title
-  }
-}
