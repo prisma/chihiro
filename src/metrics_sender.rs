@@ -1,7 +1,7 @@
 use crate::json_observer::ResponseTime;
 use futures::stream::StreamExt;
 use http::header::{AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE};
-use hyper::{Body, Client, Request, client::HttpConnector};
+use hyper::{client::HttpConnector, Body, Client, Request};
 use hyper_tls::HttpsConnector;
 use std::io::{Error, ErrorKind};
 
@@ -28,7 +28,7 @@ impl MetricsSender {
     }
 
     pub async fn send(&self, metrics: &ResponseTime) -> crate::Result<()> {
-        let payload = serde_json::to_string(metrics).unwrap();
+        let payload = serde_json::to_string(metrics)?;
         let content_length = format!("{}", payload.len());
 
         let builder = Request::builder()

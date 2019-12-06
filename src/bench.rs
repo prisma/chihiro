@@ -4,7 +4,6 @@ use chrono::Duration;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{env, io};
-use tokio::runtime::Runtime;
 
 pub struct Bench {
     opts: crate::BenchOpt,
@@ -42,11 +41,11 @@ impl Bench {
         })
     }
 
-    pub fn run(&self) -> crate::Result<()> {
-        self.print_info()?;
+    pub async fn run(&self) -> crate::Result<()> {
+        self.print_info().await?;
 
         if self.opts.validate {
-            self.validate()?;
+            self.validate().await?;
         }
 
         let tests = self.query_config.test_count();
@@ -68,8 +67,6 @@ impl Bench {
         );
 
         for (i, (query, rps)) in self.query_config.runs().enumerate() {
-            let mut rt = Runtime::new()?;
-
             let requester = Requester::new(self.opts.prisma_url.clone())?;
 
             let pb = if self.opts.show_progress {
@@ -87,14 +84,12 @@ impl Bench {
 
             pb.set_style(self.spinner.clone());
 
-            rt.block_on(async {
-                requester
-                    .run(&query, rps, self.query_config.duration(), &pb)
-                    .await;
+            requester
+                .run(&query, rps, self.query_config.duration(), &pb)
+                .await;
 
-                let metrics = requester.json_metrics(query.name(), rps).await?;
-                self.metrics_sender.send(&metrics).await
-            })?;
+            let metrics = requester.json_metrics(query.name(), rps).await?;
+            self.metrics_sender.send(&metrics).await?;
 
             pb.finish_with_message(&requester.console_metrics());
         }
@@ -102,42 +97,32 @@ impl Bench {
         Ok(())
     }
 
-    fn print_info(&self) -> crate::Result<()> {
+    async fn print_info(&self) -> crate::Result<()> {
         let requester = Requester::new(self.opts.prisma_url.clone())?;
-        let mut rt = Runtime::new()?;
+        let info = requester.server_info().await?;
 
-        rt.block_on(async {
-            let info = requester.server_info().await?;
-
-            println!(
-                "Server info :: commit: {}, version: {}, primary_connector: {}",
-                style(&format!("{}", info.commit)).bold(),
-                style(&format!("{}", info.version)).bold(),
-                style(&format!("{}", info.primary_connector)).bold(),
-            );
-
-            Ok::<(), Box<dyn std::error::Error>>(())
-        })?;
+        println!(
+            "Server info :: commit: {}, version: {}, primary_connector: {}",
+            style(&format!("{}", info.commit)).bold(),
+            style(&format!("{}", info.version)).bold(),
+            style(&format!("{}", info.primary_connector)).bold(),
+        );
 
         Ok(())
     }
 
-    fn validate(&self) -> crate::Result<()> {
+    async fn validate(&self) -> crate::Result<()> {
         let requester = Requester::new(self.opts.prisma_url.clone())?;
-        let mut rt = Runtime::new()?;
 
-        rt.block_on(async {
-            let show_progress = self.opts.show_progress;
+        let show_progress = self.opts.show_progress;
+        let pb = if show_progress {
+            OptionalBar::from(ProgressBar::new(self.query_config.query_count() as u64))
+        } else {
+            OptionalBar::empty()
+        };
 
-            let pb = if show_progress {
-                OptionalBar::from(ProgressBar::new(self.query_config.query_count() as u64))
-            } else {
-                OptionalBar::empty()
-            };
-
-            println!("Validating queries...");
-            requester.validate(&self.query_config, pb).await.unwrap();
-        });
+        println!("Validating queries...");
+        requester.validate(&self.query_config, pb).await?;
 
         Ok(())
     }

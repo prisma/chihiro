@@ -1,5 +1,8 @@
 use crate::SetupOpt;
-use std::{io::{BufRead, BufReader}, net::TcpStream};
+use std::{
+    io::{BufRead, BufReader},
+    net::TcpStream,
+};
 
 pub struct Server {
     session: ssh2::Session,
@@ -22,7 +25,7 @@ impl Server {
 
         assert!(session.authenticated());
 
-        Ok(Self { session, })
+        Ok(Self { session })
     }
 
     pub fn setup(&mut self) -> crate::Result<()> {

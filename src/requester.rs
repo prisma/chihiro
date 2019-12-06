@@ -9,15 +9,18 @@ use futures::stream::StreamExt;
 use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{client::HttpConnector, Body, Client};
 use metrics_core::{Drain, Observe};
-use metrics_runtime::{Receiver, Controller};
+use metrics_runtime::{Controller, Receiver};
 use serde::Deserialize;
 use serde_json::json;
 use std::{
     io::{Error, ErrorKind},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
     time::{Duration, Instant},
-    sync::{atomic::{AtomicUsize, Ordering}, Arc},
 };
-use tokio::time::{timeout, interval};
+use tokio::time::{interval, timeout};
 
 pub struct Requester {
     prisma_url: String,
@@ -132,7 +135,7 @@ impl Requester {
             while let Some(chunk) = chunks.next().await {
                 body.extend_from_slice(&chunk?);
             }
-           
+
             let json: serde_json::Value = serde_json::from_slice(body.as_slice())?;
 
             if json["errors"] != serde_json::Value::Null {
