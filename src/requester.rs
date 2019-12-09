@@ -19,8 +19,9 @@ use std::{
         Arc,
     },
     time::{Duration, Instant},
+    collections::HashSet,
 };
-use tokio::time::{interval, timeout};
+use tokio::{time::{interval, timeout}, task::JoinHandle};
 
 pub struct Requester {
     prisma_url: String,
@@ -33,6 +34,11 @@ pub struct ServerInfo {
     pub commit: String,
     pub version: String,
     pub primary_connector: String,
+}
+
+enum ResponseType {
+    Ok,
+    Error(String)
 }
 
 impl Requester {
@@ -85,7 +91,7 @@ impl Requester {
             let in_flight = in_flight.clone();
             in_flight.fetch_add(1, Ordering::SeqCst);
 
-            let jh = tokio::spawn(async move {
+            let jh: JoinHandle<ResponseType> = tokio::spawn(async move {
                 let start = Instant::now();
 
                 let res = timeout(Duration::from_millis(2000), requesting).await;
@@ -104,8 +110,18 @@ impl Requester {
                 in_flight.fetch_sub(1, Ordering::SeqCst);
 
                 match res {
-                    Ok(Ok(_)) => sink.counter("success").increment(),
-                    Ok(Err(_)) | Err(_) => sink.counter("error").increment(),
+                    Ok(Ok(_)) => {
+                        sink.counter("success").increment();
+                        ResponseType::Ok
+                    },
+                    Ok(Err(e)) => {
+                        sink.counter("error").increment();
+                        ResponseType::Error(format!("{}", e))
+                    }
+                    Err(e) => {
+                        sink.counter("error").increment();
+                        ResponseType::Error(format!("{}", e))
+                    }
                 }
             });
 
@@ -114,8 +130,24 @@ impl Requester {
             sent_total += 1;
         }
 
+        let mut seen_errors = HashSet::new();
+        let mut uniq_errors = Vec::new();
+
         for handle in handles {
-            handle.await.ok();
+            if let Ok(ResponseType::Error(s)) = handle.await {
+                if !seen_errors.contains(&s) {
+                    uniq_errors.push(format!("{}", s));
+                    seen_errors.insert(s);
+                }
+            }
+        }
+
+        if !uniq_errors.is_empty() {
+            println!("Errors:");
+
+            for error in uniq_errors.into_iter() {
+                println!("{}", error);
+            }
         }
     }
 
