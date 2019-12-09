@@ -44,7 +44,7 @@ enum ResponseType {
 impl Requester {
     pub fn new(prisma_url: Option<String>) -> crate::Result<Self> {
         let mut builder = Client::builder();
-        builder.keep_alive(false);
+        builder.keep_alive(true);
 
         let client = builder.build(HttpConnector::new());
         let prisma_url = prisma_url.unwrap_or_else(|| String::from("http://localhost:4466/"));
