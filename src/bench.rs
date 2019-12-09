@@ -91,7 +91,7 @@ impl Bench {
             let metrics = requester.json_metrics(query.name(), rps).await?;
             self.metrics_sender.send(&metrics).await?;
 
-            pb.finish_with_message(&requester.console_metrics());
+            println!("{}", requester.console_metrics());
         }
 
         Ok(())
