@@ -90,7 +90,7 @@ impl Requester {
             let in_flight = in_flight.clone();
             in_flight.fetch_add(1, Ordering::SeqCst);
 
-            let requesting = timeout(Duration::from_millis(2000), self.request(query));
+            let requesting = timeout(Duration::from_secs(10), self.request(query));
             let jh: JoinHandle<ResponseType> = tokio::spawn(async move {
                 let start = Instant::now();
                 let res = requesting.await;
