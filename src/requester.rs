@@ -85,16 +85,16 @@ impl Requester {
             let cont = self.receiver.controller();
             let mut sink = self.receiver.sink();
 
-            let requesting = self.request(query);
             let pb = pb.clone();
 
             let in_flight = in_flight.clone();
             in_flight.fetch_add(1, Ordering::SeqCst);
 
+            let requesting = timeout(Duration::from_millis(2000), self.request(query));
             let jh: JoinHandle<ResponseType> = tokio::spawn(async move {
                 let start = Instant::now();
+                let res = requesting.await;
 
-                let res = timeout(Duration::from_millis(2000), requesting).await;
                 sink.record_timing("response_time", start, Instant::now());
 
                 let metrics = Self::drain_metrics(cont);
@@ -131,21 +131,16 @@ impl Requester {
         }
 
         let mut seen_errors = HashSet::new();
-        let mut uniq_errors = Vec::new();
 
         for handle in handles {
             if let Ok(ResponseType::Error(s)) = handle.await {
-                if !seen_errors.contains(&s) {
-                    uniq_errors.push(format!("{}", s));
-                    seen_errors.insert(s);
-                }
+                seen_errors.insert(s);
             }
         }
 
-        if !uniq_errors.is_empty() {
+        if !seen_errors.is_empty() {
             println!("Errors:");
-
-            for error in uniq_errors.into_iter() {
+            for error in seen_errors.into_iter() {
                 println!("{}", error);
             }
         }
