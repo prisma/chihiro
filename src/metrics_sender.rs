@@ -15,7 +15,7 @@ pub struct MetricsSender {
 
 impl MetricsSender {
     pub fn new(endpoint: &str, database: &str, user: &str, password: &str) -> Self {
-        let https = HttpsConnector::new().unwrap();
+        let https = HttpsConnector::new();
         let client = Client::builder().build::<_, Body>(https);
 
         Self {
