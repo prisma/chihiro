@@ -58,14 +58,7 @@ impl Requester {
         })
     }
 
-    fn reconnect_client(&mut self) {
-        let mut builder = Client::builder();
-        builder.keep_alive(true);
-        self.client = builder.build(HttpConnector::new());
-    }
-
     pub async fn run(&mut self, query: &Query, rps: u64, duration: Duration, pb: &OptionalBar) {
-        self.reconnect_client();
         let mut rate_stream = interval(Duration::from_nanos(1_000_000_000 / rps));
 
         let start = Instant::now();
