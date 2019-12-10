@@ -10,10 +10,12 @@ pub struct Bench {
     query_config: QueryConfig,
     metrics_sender: MetricsSender,
     spinner: ProgressStyle,
+    requester: Requester,
 }
 
 impl Bench {
     pub fn new(opts: crate::BenchOpt) -> crate::Result<Self> {
+        let requester = Requester::new(opts.prisma_url.clone())?;
         let query_config = QueryConfig::new(&opts.query_file)?;
 
         let elastic_user = env::var("ELASTIC_USER")
@@ -38,10 +40,11 @@ impl Bench {
             query_config,
             metrics_sender,
             spinner,
+            requester,
         })
     }
 
-    pub async fn run(&self) -> crate::Result<()> {
+    pub async fn run(&mut self) -> crate::Result<()> {
         self.print_info().await?;
 
         if self.opts.validate {
@@ -67,8 +70,6 @@ impl Bench {
         );
 
         for (i, (query, rps)) in self.query_config.runs().enumerate() {
-            let requester = Requester::new(self.opts.prisma_url.clone())?;
-
             let pb = if self.opts.show_progress {
                 OptionalBar::from(ProgressBar::new(self.query_config.duration().as_secs()))
             } else {
@@ -84,22 +85,21 @@ impl Bench {
 
             pb.set_style(self.spinner.clone());
 
-            requester
+            self.requester
                 .run(&query, rps, self.query_config.duration(), &pb)
                 .await;
 
-            let metrics = requester.json_metrics(query.name(), rps).await?;
+            let metrics = self.requester.json_metrics(query.name(), rps).await?;
             self.metrics_sender.send(&metrics).await?;
 
-            println!("{}", requester.console_metrics());
+            println!("{}", self.requester.console_metrics());
         }
 
         Ok(())
     }
 
     async fn print_info(&self) -> crate::Result<()> {
-        let requester = Requester::new(self.opts.prisma_url.clone())?;
-        let info = requester.server_info().await?;
+        let info = self.requester.server_info().await?;
 
         println!(
             "Server info :: commit: {}, version: {}, primary_connector: {}",
@@ -112,8 +112,6 @@ impl Bench {
     }
 
     async fn validate(&self) -> crate::Result<()> {
-        let requester = Requester::new(self.opts.prisma_url.clone())?;
-
         let show_progress = self.opts.show_progress;
         let pb = if show_progress {
             OptionalBar::from(ProgressBar::new(self.query_config.query_count() as u64))
@@ -122,7 +120,7 @@ impl Bench {
         };
 
         println!("Validating queries...");
-        requester.validate(&self.query_config, pb).await?;
+        self.requester.validate(&self.query_config, pb).await?;
 
         Ok(())
     }

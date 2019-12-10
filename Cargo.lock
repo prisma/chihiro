@@ -798,7 +798,7 @@ dependencies = [
 [[package]]
 name = "hyper"
 version = "0.13.0-alpha.4"
-source = "git+https://github.com/hyperium/hyper/#78e8da17cf8737720b452f3077a2de90184f9b95"
+source = "git+https://github.com/hyperium/hyper/#f45137ad6d362d2e13b853e19f2ba9de1358c133"
 dependencies = [
  "bytes 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-channel 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
