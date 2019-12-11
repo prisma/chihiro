@@ -7,7 +7,7 @@ use crate::{
 use console::style;
 use futures::stream::StreamExt;
 use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
-use hyper::{client::HttpConnector, Body, Client};
+use isahc::{HttpClient, ResponseFuture};
 use metrics_core::{Drain, Observe};
 use metrics_runtime::{Controller, Receiver};
 use serde::Deserialize;
@@ -21,12 +21,13 @@ use std::{
     time::{Duration, Instant},
     collections::HashSet,
 };
-use tokio::{time::{interval, timeout}, task::JoinHandle};
+use http::Request;
+use async_std::{stream, future, task};
 
 pub struct Requester {
     prisma_url: String,
     receiver: Receiver,
-    client: Client<HttpConnector>,
+    client: HttpClient,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,10 +44,7 @@ enum ResponseType {
 
 impl Requester {
     pub fn new(prisma_url: Option<String>) -> crate::Result<Self> {
-        let mut builder = Client::builder();
-        builder.keep_alive(true);
-
-        let client = builder.build(HttpConnector::new());
+        let client = HttpClient::new()?;
         let prisma_url = prisma_url.unwrap_or_else(|| String::from("http://localhost:4466/"));
 
         let receiver = Receiver::builder().build()?;
@@ -58,17 +56,18 @@ impl Requester {
         })
     }
 
-    pub async fn run(&mut self, query: &Query, rps: u64, duration: Duration, pb: &OptionalBar) {
-        let mut rate_stream = interval(Duration::from_nanos(1_000_000_000 / rps));
-
+    pub async fn run(&self, query: &Query, rps: u64, duration: Duration, pb: &OptionalBar) {
         let start = Instant::now();
         let mut tick = Instant::now();
         let mut sent_total = 0;
         let in_flight = Arc::new(AtomicUsize::new(0));
 
         let mut handles = Vec::with_capacity((duration.as_secs() * rps) as usize);
-        while Instant::now().duration_since(start) < duration {
-            rate_stream.tick().await;
+
+        while let Some(_) = stream::interval(Duration::from_nanos(1_000_000_000 / rps)).next().await {
+            if Instant::now().duration_since(start) < duration {
+                break;
+            }
 
             if Instant::now().duration_since(tick) >= Duration::from_secs(1) {
                 tick = Instant::now();
@@ -88,8 +87,10 @@ impl Requester {
             let in_flight = in_flight.clone();
             in_flight.fetch_add(1, Ordering::SeqCst);
 
-            let requesting = timeout(Duration::from_secs(10), self.request(query));
-            let jh: JoinHandle<ResponseType> = tokio::spawn(async move {
+            let request = self.request(query);
+            let requesting = future::timeout(Duration::from_secs(10), request);
+
+            let jh: task::JoinHandle<ResponseType> = task::spawn(async move {
                 let start = Instant::now();
                 let res = requesting.await;
 
@@ -131,7 +132,7 @@ impl Requester {
         let mut seen_errors = HashSet::new();
 
         for handle in handles {
-            if let Ok(ResponseType::Error(s)) = handle.await {
+            if let ResponseType::Error(s) = handle.await {
                 seen_errors.insert(s);
             }
         }
@@ -154,14 +155,7 @@ impl Requester {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(0);
 
-            let mut body: Vec<u8> = Vec::with_capacity(content_length);
-            let mut chunks = res.into_body();
-
-            while let Some(chunk) = chunks.next().await {
-                body.extend_from_slice(&chunk?);
-            }
-
-            let json: serde_json::Value = serde_json::from_slice(body.as_slice())?;
+            let json: serde_json::Value = res.into_body().json()?;
 
             if json["errors"] != serde_json::Value::Null {
                 return Err(Error::new(
@@ -180,12 +174,12 @@ impl Requester {
     }
 
     pub async fn server_info(&self) -> crate::Result<ServerInfo> {
-        let builder = hyper::Request::builder()
+        let builder = Request::builder()
             .uri(&format!("{}server_info", self.prisma_url))
             .method("GET");
 
-        let request = builder.body(Body::empty())?;
-        let res = self.client.request(request).await?;
+        let request = builder.body(())?;
+        let res = self.client.send_async(request).await?;
 
         let content_length: usize = res
             .headers()
@@ -194,14 +188,7 @@ impl Requester {
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
 
-        let mut body: Vec<u8> = Vec::with_capacity(content_length);
-        let mut chunks = res.into_body();
-
-        while let Some(chunk) = chunks.next().await {
-            body.extend_from_slice(&chunk?);
-        }
-
-        Ok(serde_json::from_slice(&body)?)
+        Ok(res.into_body().json()?)
     }
 
     pub async fn json_metrics(&self, query_name: &str, rps: u64) -> crate::Result<ResponseTime> {
@@ -213,7 +200,7 @@ impl Requester {
         Ok(observer.drain())
     }
 
-    pub fn request(&self, query: &Query) -> hyper::client::ResponseFuture {
+    pub fn request(&self, query: &Query) -> ResponseFuture {
         let json_data = json!({
             "query": query.query(),
             "variables": {}
@@ -222,15 +209,15 @@ impl Requester {
         let payload = serde_json::to_string(&json_data).unwrap();
         let content_length = format!("{}", payload.len());
 
-        let builder = hyper::Request::builder()
+        let builder = Request::builder()
             .uri(&self.prisma_url)
             .method("POST")
             .header(CONTENT_LENGTH, &content_length)
             .header(CONTENT_TYPE, "application/json");
 
-        let request = builder.body(Body::from(payload)).unwrap();
+        let request = builder.body(payload).unwrap();
 
-        self.client.request(request)
+        self.client.send_async(request)
     }
 
     pub fn console_metrics(&self) -> String {

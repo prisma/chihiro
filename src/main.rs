@@ -60,7 +60,7 @@ pub enum Opt {
     Setup(SetupOpt),
 }
 
-#[tokio::main]
+#[async_std::main]
 async fn main() -> Result<()> {
     match Opt::from_args() {
         Opt::Bench(bench_opts) => Bench::new(bench_opts)?.run().await,

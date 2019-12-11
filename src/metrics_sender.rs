@@ -1,35 +1,32 @@
 use crate::json_observer::ResponseTime;
-use futures::stream::StreamExt;
 use http::header::{AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE};
-use hyper::{client::HttpConnector, Body, Client, Request};
-use hyper_tls::HttpsConnector;
+use isahc::HttpClient;
+use http::Request;
 use std::io::{Error, ErrorKind};
 
 pub struct MetricsSender {
     endpoint: String,
     database: String,
-    client: Client<HttpsConnector<HttpConnector>>,
+    client: HttpClient,
     user: String,
     password: String,
 }
 
 impl MetricsSender {
     pub fn new(endpoint: &str, database: &str, user: &str, password: &str) -> Self {
-        let https = HttpsConnector::new();
-        let client = Client::builder().build::<_, Body>(https);
-
         Self {
             endpoint: endpoint.into(),
             database: database.into(),
             user: user.into(),
             password: password.into(),
-            client,
+            client: HttpClient::new().unwrap(),
         }
     }
 
     pub async fn send(&self, metrics: &ResponseTime) -> crate::Result<()> {
         let payload = serde_json::to_string(metrics)?;
         let content_length = format!("{}", payload.len());
+
 
         let builder = Request::builder()
             .uri(&format!("{}/{}/_doc/", self.endpoint, self.database))
@@ -44,20 +41,13 @@ impl MetricsSender {
                 ),
             );
 
-        let request = builder.body(Body::from(payload)).unwrap();
-        let response = self.client.request(request).await?;
+        let request = builder.body(payload).unwrap();
+        let response = self.client.send_async(request).await?;
 
         if response.status().is_success() {
             Ok(())
         } else {
-            let mut body: Vec<u8> = Vec::new();
-            let mut chunks = response.into_body();
-
-            while let Some(chunk) = chunks.next().await {
-                body.extend_from_slice(&chunk?);
-            }
-
-            let json: serde_json::Value = serde_json::from_slice(&body)?;
+            let json: serde_json::Value = response.into_body().json().unwrap();
 
             Err(Error::new(
                 ErrorKind::Other,
