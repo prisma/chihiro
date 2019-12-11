@@ -64,8 +64,9 @@ impl Requester {
 
         let mut handles = Vec::with_capacity((duration.as_secs() * rps) as usize);
 
-        while let Some(_) = stream::interval(Duration::from_nanos(1_000_000_000 / rps)).next().await {
-            if Instant::now().duration_since(start) < duration {
+        let mut interval = stream::interval(Duration::from_nanos(1_000_000_000 / rps));
+        while let Some(_) = interval.next().await {
+            if Instant::now().duration_since(start) >= duration {
                 break;
             }
 
