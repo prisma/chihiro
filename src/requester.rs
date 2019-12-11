@@ -119,7 +119,7 @@ impl Requester {
                     .body(payload).unwrap();
 
                 let start = Instant::now();
-                let res = future::timeout(Duration::from_secs(10), client.send_async(request)).await;
+                let res = client.send_async(request).await;
 
                 sink.record_timing("response_time", start, Instant::now());
 
@@ -136,14 +136,10 @@ impl Requester {
                 in_flight.fetch_sub(1, Ordering::SeqCst);
 
                 match res {
-                    Ok(Ok(_)) => {
+                    Ok(_) => {
                         sink.counter("success").increment();
                         ResponseType::Ok
                     },
-                    Ok(Err(e)) => {
-                        sink.counter("error").increment();
-                        ResponseType::Error(format!("{}", e))
-                    }
                     Err(e) => {
                         sink.counter("error").increment();
                         ResponseType::Error(format!("{}", e))
