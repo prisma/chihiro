@@ -7,7 +7,7 @@ use crate::{
 use console::style;
 use futures::stream::StreamExt;
 use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
-use isahc::{HttpClient, ResponseFuture};
+use isahc::{HttpClient, HttpClientBuilder, ResponseFuture};
 use metrics_core::{Drain, Observe};
 use metrics_runtime::{Controller, Receiver};
 use serde::Deserialize;
@@ -44,7 +44,15 @@ enum ResponseType {
 
 impl Requester {
     pub fn new(prisma_url: Option<String>) -> crate::Result<Self> {
-        let client = Arc::new(HttpClient::new()?);
+        let client = HttpClientBuilder::new()
+            .max_connections(1000)
+            .connection_cache_size(1000)
+            .timeout(Duration::from_secs(10))
+            .tcp_keepalive(Duration::from_secs(120))
+            .tcp_nodelay()
+            .build()?;
+
+        let client = Arc::new(client);
         let prisma_url = prisma_url.unwrap_or_else(|| String::from("http://localhost:4466/"));
 
         let receiver = Receiver::builder().build()?;
@@ -93,8 +101,6 @@ impl Requester {
             let query = query.query();
 
             let jh: task::JoinHandle<ResponseType> = task::spawn(async move {
-                let start = Instant::now();
-
                 let json_data = json!({
                     "query": query,
                     "variables": {}
@@ -112,6 +118,7 @@ impl Requester {
                     .header(CONTENT_TYPE, "application/json")
                     .body(payload).unwrap();
 
+                let start = Instant::now();
                 let res = future::timeout(Duration::from_secs(10), client.send_async(request)).await;
 
                 sink.record_timing("response_time", start, Instant::now());
