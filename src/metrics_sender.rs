@@ -28,7 +28,7 @@ impl MetricsSender {
         let content_length = format!("{}", payload.len());
 
 
-        let builder = Request::builder()
+        let request = Request::builder()
             .uri(&format!("{}/{}/_doc/", self.endpoint, self.database))
             .method("POST")
             .header(CONTENT_LENGTH, &content_length)
@@ -39,9 +39,9 @@ impl MetricsSender {
                     "Basic {}",
                     base64::encode(&format!("{}:{}", self.user, self.password))
                 ),
-            );
+            )
+            .body(payload).unwrap();
 
-        let request = builder.body(payload).unwrap();
         let response = self.client.send_async(request).await?;
 
         if response.status().is_success() {

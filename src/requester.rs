@@ -27,7 +27,7 @@ use async_std::{stream, future, task};
 pub struct Requester {
     prisma_url: String,
     receiver: Receiver,
-    client: HttpClient,
+    client: Arc<HttpClient>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,7 +44,7 @@ enum ResponseType {
 
 impl Requester {
     pub fn new(prisma_url: Option<String>) -> crate::Result<Self> {
-        let client = HttpClient::new()?;
+        let client = Arc::new(HttpClient::new()?);
         let prisma_url = prisma_url.unwrap_or_else(|| String::from("http://localhost:4466/"));
 
         let receiver = Receiver::builder().build()?;
@@ -87,12 +87,31 @@ impl Requester {
             let in_flight = in_flight.clone();
             in_flight.fetch_add(1, Ordering::SeqCst);
 
-            let request = self.request(query);
-            let requesting = future::timeout(Duration::from_secs(10), request);
+            let client = self.client.clone();
+            let uri = self.prisma_url.clone();
+            let query = query.query();
 
             let jh: task::JoinHandle<ResponseType> = task::spawn(async move {
                 let start = Instant::now();
-                let res = requesting.await;
+
+                let json_data = json!({
+                    "query": query,
+                    "variables": {}
+                });
+
+                let payload = serde_json::to_string(&json_data).unwrap();
+                let content_length = format!("{}", payload.len());
+
+                let mut builder = Request::builder();
+
+                let request = builder
+                    .uri(&uri)
+                    .method("POST")
+                    .header(CONTENT_LENGTH, &content_length)
+                    .header(CONTENT_TYPE, "application/json")
+                    .body(payload).unwrap();
+
+                let res = future::timeout(Duration::from_secs(10), client.send_async(request)).await;
 
                 sink.record_timing("response_time", start, Instant::now());
 
@@ -148,12 +167,6 @@ impl Requester {
     pub async fn validate(&self, query_config: &QueryConfig, pb: OptionalBar) -> crate::Result<()> {
         for query in query_config.queries() {
             let res = self.request(&query).await?;
-            let content_length: usize = res
-                .headers()
-                .get(CONTENT_LENGTH)
-                .and_then(|s| s.to_str().ok())
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0);
 
             let json: serde_json::Value = res.into_body().json()?;
 
@@ -174,19 +187,12 @@ impl Requester {
     }
 
     pub async fn server_info(&self) -> crate::Result<ServerInfo> {
-        let builder = Request::builder()
+        let request = Request::builder()
             .uri(&format!("{}server_info", self.prisma_url))
-            .method("GET");
+            .method("GET")
+            .body(())?;
 
-        let request = builder.body(())?;
         let res = self.client.send_async(request).await?;
-
-        let content_length: usize = res
-            .headers()
-            .get(CONTENT_LENGTH)
-            .and_then(|s| s.to_str().ok())
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(0);
 
         Ok(res.into_body().json()?)
     }
@@ -209,13 +215,12 @@ impl Requester {
         let payload = serde_json::to_string(&json_data).unwrap();
         let content_length = format!("{}", payload.len());
 
-        let builder = Request::builder()
+        let request = Request::builder()
             .uri(&self.prisma_url)
             .method("POST")
             .header(CONTENT_LENGTH, &content_length)
-            .header(CONTENT_TYPE, "application/json");
-
-        let request = builder.body(payload).unwrap();
+            .header(CONTENT_TYPE, "application/json")
+            .body(payload).unwrap();
 
         self.client.send_async(request)
     }
