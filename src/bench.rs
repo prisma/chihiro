@@ -15,7 +15,7 @@ pub struct Bench {
 
 impl Bench {
     pub fn new(opts: crate::BenchOpt) -> crate::Result<Self> {
-        let requester = Requester::new(opts.prisma_url.clone())?;
+        let requester = Requester::new(opts.endpoint_type, opts.endpoint_url.clone())?;
         let query_config = QueryConfig::new(&opts.query_file)?;
 
         let elastic_user = env::var("ELASTIC_USER")

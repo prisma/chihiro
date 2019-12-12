@@ -13,18 +13,52 @@ use metrics_runtime::{Controller, Receiver};
 use serde::Deserialize;
 use serde_json::json;
 use std::{
+    collections::HashSet,
     io::{Error, ErrorKind},
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
     time::{Duration, Instant},
-    collections::HashSet,
 };
-use tokio::{time::{interval, timeout}, task::JoinHandle};
+use tokio::{
+    task::JoinHandle,
+    time::{interval, timeout},
+};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EndpointType {
+    Prisma,
+    Hasura,
+}
+
+impl Default for EndpointType {
+    fn default() -> Self {
+        Self::Prisma
+    }
+}
+
+impl FromStr for EndpointType {
+    type Err = Box<dyn std::error::Error>;
+
+    fn from_str(s: &str) -> crate::Result<Self> {
+        match s {
+            "hasura" => Ok(Self::Hasura),
+            "prisma" => Ok(Self::Prisma),
+            typ => Err(
+                Error::new(
+                    ErrorKind::InvalidInput,
+                    format!("Endpoint type '{}' is not supported", typ),
+                ).into()
+            ),
+        }
+    }
+}
 
 pub struct Requester {
-    prisma_url: String,
+    endpoint_type: EndpointType,
+    endpoint_url: String,
     receiver: Receiver,
     client: Client<HttpConnector>,
 }
@@ -38,21 +72,23 @@ pub struct ServerInfo {
 
 enum ResponseType {
     Ok,
-    Error(String)
+    Error(String),
 }
 
 impl Requester {
-    pub fn new(prisma_url: Option<String>) -> crate::Result<Self> {
+    pub fn new(endpoint_type: Option<EndpointType>, endpoint_url: Option<String>) -> crate::Result<Self> {
         let mut builder = Client::builder();
         builder.keep_alive(true);
 
         let client = builder.build(HttpConnector::new());
-        let prisma_url = prisma_url.unwrap_or_else(|| String::from("http://localhost:4466/"));
+        let endpoint_url = endpoint_url.unwrap_or_else(|| String::from("http://localhost:4466/"));
 
         let receiver = Receiver::builder().build()?;
+        let endpoint_type = endpoint_type.unwrap_or(EndpointType::Prisma);
 
         Ok(Self {
-            prisma_url,
+            endpoint_type,
+            endpoint_url,
             client,
             receiver,
         })
@@ -111,7 +147,7 @@ impl Requester {
                     Ok(Ok(_)) => {
                         sink.counter("success").increment();
                         ResponseType::Ok
-                    },
+                    }
                     Ok(Err(e)) => {
                         sink.counter("error").increment();
                         ResponseType::Error(format!("{}", e))
@@ -180,28 +216,39 @@ impl Requester {
     }
 
     pub async fn server_info(&self) -> crate::Result<ServerInfo> {
-        let builder = hyper::Request::builder()
-            .uri(&format!("{}server_info", self.prisma_url))
-            .method("GET");
+        match self.endpoint_type {
+            EndpointType::Prisma => {
+                let builder = hyper::Request::builder()
+                    .uri(&format!("{}server_info", self.endpoint_url))
+                    .method("GET");
 
-        let request = builder.body(Body::empty())?;
-        let res = self.client.request(request).await?;
+                let request = builder.body(Body::empty())?;
+                let res = self.client.request(request).await?;
 
-        let content_length: usize = res
-            .headers()
-            .get(CONTENT_LENGTH)
-            .and_then(|s| s.to_str().ok())
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(0);
+                let content_length: usize = res
+                    .headers()
+                    .get(CONTENT_LENGTH)
+                    .and_then(|s| s.to_str().ok())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0);
 
-        let mut body: Vec<u8> = Vec::with_capacity(content_length);
-        let mut chunks = res.into_body();
+                let mut body: Vec<u8> = Vec::with_capacity(content_length);
+                let mut chunks = res.into_body();
 
-        while let Some(chunk) = chunks.next().await {
-            body.extend_from_slice(&chunk?);
+                while let Some(chunk) = chunks.next().await {
+                    body.extend_from_slice(&chunk?);
+                }
+
+                Ok(serde_json::from_slice(&body)?)
+            },
+            EndpointType::Hasura => {
+                Ok(ServerInfo {
+                    commit: String::from("hasura"),
+                    version: String::from("1.0.0-rc.1"),
+                    primary_connector: String::from("postgres"),
+                })
+            }
         }
-
-        Ok(serde_json::from_slice(&body)?)
     }
 
     pub async fn json_metrics(&self, query_name: &str, rps: u64) -> crate::Result<ResponseTime> {
@@ -223,7 +270,7 @@ impl Requester {
         let content_length = format!("{}", payload.len());
 
         let builder = hyper::Request::builder()
-            .uri(&self.prisma_url)
+            .uri(&self.endpoint_url)
             .method("POST")
             .header(CONTENT_LENGTH, &content_length)
             .header(CONTENT_TYPE, "application/json");

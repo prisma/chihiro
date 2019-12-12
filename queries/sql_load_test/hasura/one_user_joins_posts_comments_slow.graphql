@@ -1,0 +1,12 @@
+query MyQuery {
+  sql_load_test_User(where: {id: {_lt: $user_id}}) {
+    Posts {
+      content
+      createdAt
+      Comments {
+        content
+        createdAt
+      }
+    }
+  }
+}

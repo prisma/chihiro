@@ -1,0 +1,12 @@
+query MyQuery {
+  findManyUser(where: { id_lt: 100 }) {
+    posts {
+      content
+      createdAt
+      comments {
+        content
+        createdAt
+      }
+    }
+  }
+}

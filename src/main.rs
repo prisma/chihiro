@@ -19,16 +19,22 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub struct BenchOpt {
     /// The Prisma URL. Default: http://localhost:4466/
     #[structopt(long)]
-    prisma_url: Option<String>,
-    /// The squery configuration file (toml) to execute.
+    endpoint_url: Option<String>,
+    /// The query configuration file (toml) to execute.
     #[structopt(long)]
     query_file: String,
+    /// Validate queries before benchmarking.
     #[structopt(long)]
     validate: bool,
+    /// Show fancy progress metrics (disable for CI).
     #[structopt(long)]
     show_progress: bool,
+    /// Which Elastic Search database to write.
     #[structopt(long)]
     metrics_database: String,
+    /// The GraphQL endpoint type. (prisma|hasura)
+    #[structopt(long)]
+    endpoint_type: Option<requester::EndpointType>,
 }
 
 #[derive(Debug, StructOpt, Clone)]
