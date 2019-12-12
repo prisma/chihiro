@@ -10,19 +10,17 @@ edition = "2018"
 tokio = { version = "0.2", features = ["rt-threaded", "time", "macros"] }
 futures = "0.3"
 async-std = "1"
-hyper = { git = "https://github.com/hyperium/hyper/" }
-hyper-tls = { git = "https://github.com/hyperium/hyper-tls/" }
+hyper = "0.13"
+hyper-tls = "0.4"
 base64 = "0.11"
 structopt = "0.3"
 indicatif = "0.13"
 metrics-runtime = "0.12"
 metrics-core = "0.5"
 metrics = "0.12"
-serde = "1"
-serde_json = "1"
-serde_derive = "1"
+serde = { version = "1.0", features = ["std", "serde_derive"] }
+serde_json = "1.0"
 http = "0.2"
-elastic = "~0.21.0-pre.5"
 toml = "0.5"
 hdrhistogram = "6.3"
 walkdir = "2"
