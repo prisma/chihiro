@@ -1,5 +1,5 @@
 query MyQuery {
-  sql_load_test_User(where: {id: {_lt: $user_id}}) {
+  sql_load_test_User(where: {id: {_lt: 100}}) {
     Posts {
       content
       createdAt

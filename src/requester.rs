@@ -144,9 +144,14 @@ impl Requester {
                 in_flight.fetch_sub(1, Ordering::SeqCst);
 
                 match res {
-                    Ok(Ok(_)) => {
-                        sink.counter("success").increment();
-                        ResponseType::Ok
+                    Ok(Ok(res)) => {
+                        if res.status().is_success() {
+                            sink.counter("success").increment();
+                            ResponseType::Ok
+                        } else {
+                            sink.counter("error").increment();
+                            ResponseType::Error(format!("{}", res.status().as_str()))
+                        }
                     }
                     Ok(Err(e)) => {
                         sink.counter("error").increment();
@@ -190,24 +195,30 @@ impl Requester {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(0);
 
-            let mut body: Vec<u8> = Vec::with_capacity(content_length);
-            let mut chunks = res.into_body();
-
-            while let Some(chunk) = chunks.next().await {
-                body.extend_from_slice(&chunk?);
-            }
-
-            let json: serde_json::Value = serde_json::from_slice(body.as_slice())?;
-
-            if json["errors"] != serde_json::Value::Null {
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    format!("Query {} returned an error: {}", query.name(), json),
-                )
-                .into());
-            }
-
             pb.inc(1);
+
+            if res.status().is_success() {
+                let mut body: Vec<u8> = Vec::with_capacity(content_length);
+                let mut chunks = res.into_body();
+
+                while let Some(chunk) = chunks.next().await {
+                    body.extend_from_slice(&chunk?);
+                }
+
+                let json: serde_json::Value = serde_json::from_slice(body.as_slice())?;
+
+                if json["errors"] != serde_json::Value::Null {
+                    let msg = format!("Query {} returned an error: {}", query.name(), json);
+                    let error = Error::new(ErrorKind::InvalidData, msg).into();
+
+                    return Err(error);
+                }
+            } else {
+                let msg = format!("Query {} returned an error: {}", query.name(), res.status().as_str());
+                let error = Error::new(ErrorKind::InvalidData, msg).into();
+
+                return Err(error);
+            }
         }
 
         pb.finish_with_message("All queries validated");
@@ -243,7 +254,7 @@ impl Requester {
             },
             EndpointType::Hasura => {
                 Ok(ServerInfo {
-                    commit: String::from("hasura"),
+                    commit: String::from("hasura-rc.1"),
                     version: String::from("1.0.0-rc.1"),
                     primary_connector: String::from("postgres"),
                 })
