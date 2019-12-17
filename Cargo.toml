@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 tokio = { version = "0.2", features = ["rt-threaded", "time", "macros"] }
 futures = "0.3"
-async-std = "1"
 hyper = "0.13"
 hyper-tls = "0.4"
 base64 = "0.11"

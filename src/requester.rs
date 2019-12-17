@@ -16,10 +16,6 @@ use std::{
     collections::HashSet,
     io::{Error, ErrorKind},
     str::FromStr,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
     time::{Duration, Instant},
 };
 use tokio::{
@@ -100,7 +96,6 @@ impl Requester {
         let start = Instant::now();
         let mut tick = Instant::now();
         let mut sent_total = 0;
-        let in_flight = Arc::new(AtomicUsize::new(0));
 
         let mut handles = Vec::with_capacity((duration.as_secs() * rps) as usize);
         while Instant::now().duration_since(start) < duration {
@@ -121,9 +116,6 @@ impl Requester {
 
             let pb = pb.clone();
 
-            let in_flight = in_flight.clone();
-            in_flight.fetch_add(1, Ordering::SeqCst);
-
             let requesting = timeout(Duration::from_secs(10), self.request(query));
             let jh: JoinHandle<ResponseType> = tokio::spawn(async move {
                 let start = Instant::now();
@@ -140,8 +132,6 @@ impl Requester {
                     rps,
                     metrics,
                 ));
-
-                in_flight.fetch_sub(1, Ordering::SeqCst);
 
                 match res {
                     Ok(Ok(res)) => {
