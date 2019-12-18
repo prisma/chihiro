@@ -1,5 +1,4 @@
 use crate::json_observer::ResponseTime;
-use futures::stream::StreamExt;
 use http::header::{AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{client::HttpConnector, Body, Client, Request};
 use hyper_tls::HttpsConnector;
@@ -50,14 +49,8 @@ impl MetricsSender {
         if response.status().is_success() {
             Ok(())
         } else {
-            let mut body: Vec<u8> = Vec::new();
-            let mut chunks = response.into_body();
-
-            while let Some(chunk) = chunks.next().await {
-                body.extend_from_slice(&chunk?);
-            }
-
-            let json: serde_json::Value = serde_json::from_slice(&body)?;
+            let bytes = hyper::body::to_bytes(response.into_body()).await?;
+            let json: serde_json::Value = serde_json::from_slice(&bytes)?;
 
             Err(Error::new(
                 ErrorKind::Other,

@@ -5,7 +5,6 @@ use crate::{
     json_observer::{JsonObserver, ResponseTime},
 };
 use console::style;
-use futures::stream::StreamExt;
 use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{client::HttpConnector, Body, Client};
 use metrics_core::{Drain, Observe};
@@ -178,24 +177,12 @@ impl Requester {
     pub async fn validate(&self, query_config: &QueryConfig, pb: OptionalBar) -> crate::Result<()> {
         for query in query_config.queries() {
             let res = self.request(&query).await?;
-            let content_length: usize = res
-                .headers()
-                .get(CONTENT_LENGTH)
-                .and_then(|s| s.to_str().ok())
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0);
 
             pb.inc(1);
 
             if res.status().is_success() {
-                let mut body: Vec<u8> = Vec::with_capacity(content_length);
-                let mut chunks = res.into_body();
-
-                while let Some(chunk) = chunks.next().await {
-                    body.extend_from_slice(&chunk?);
-                }
-
-                let json: serde_json::Value = serde_json::from_slice(body.as_slice())?;
+                let bytes = hyper::body::to_bytes(res.into_body()).await?;
+                let json: serde_json::Value = serde_json::from_slice(bytes.as_ref())?;
 
                 if json["errors"] != serde_json::Value::Null {
                     let msg = format!("Query {} returned an error: {}", query.name(), json);
@@ -225,22 +212,9 @@ impl Requester {
 
                 let request = builder.body(Body::empty())?;
                 let res = self.client.request(request).await?;
+                let bytes = hyper::body::to_bytes(res.into_body()).await?;
 
-                let content_length: usize = res
-                    .headers()
-                    .get(CONTENT_LENGTH)
-                    .and_then(|s| s.to_str().ok())
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(0);
-
-                let mut body: Vec<u8> = Vec::with_capacity(content_length);
-                let mut chunks = res.into_body();
-
-                while let Some(chunk) = chunks.next().await {
-                    body.extend_from_slice(&chunk?);
-                }
-
-                Ok(serde_json::from_slice(&body)?)
+                Ok(serde_json::from_slice(&bytes)?)
             },
             EndpointType::Hasura => {
                 Ok(ServerInfo {
