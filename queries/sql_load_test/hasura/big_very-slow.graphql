@@ -1,0 +1,12 @@
+query Big {
+  sql_load_test_User(where: {id: {_lt: 100}}) {
+    Posts {
+      content
+      createdAt
+      Comments {
+        content
+        createdAt
+      }
+    }
+  }
+}

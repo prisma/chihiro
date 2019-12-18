@@ -1,9 +1,9 @@
 query MyQuery {
-  sql_load_test_User(where: {id: {_lt: 100}}) {
-    Posts {
+  sql_load_test_User(where: {id: {_lt: 10}}) {
+    Posts(limit: 2) {
       content
       createdAt
-      Comments {
+      Comments(limit: 1) {
         content
         createdAt
       }

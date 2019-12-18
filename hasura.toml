@@ -1,4 +1,4 @@
-identifier = "chinook"
+identifier = "SQL Load Test Hasura"
 duration_per_test = 60 # seconds
 elastic_endpoint = "https://16a31d8b2f8042df82b75bd7759edb00.eu-central-1.aws.cloud.es.io:9243/"
 
@@ -11,9 +11,15 @@ very_fast = [50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
 
 [[test_run]]
 path = "./queries/sql_load_test/hasura"
-[test_run.variables.artist_id]
+[test_run.variables.user_id]
 minimum = 1
-maximum = 275
-[test_run.variables.track_id]
+maximum = 3000000
+[test_run.variables.comment_id]
 minimum = 1
-maximum = 3503
+maximum = 30000000
+[test_run.variables.post_id]
+minimum = 1
+maximum = 30000000
+[test_run.variables.like_id]
+minimum = 1
+maximum = 150000000

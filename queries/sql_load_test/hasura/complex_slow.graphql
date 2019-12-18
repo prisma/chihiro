@@ -1,0 +1,12 @@
+query Complex {
+  sql_load_test_Comment_by_pk(id: 10) {
+    content
+    Likes(where: {id: {_gt: 1000}}) {
+      id
+      Post {
+        id
+        content
+      }
+    }
+  }
+}

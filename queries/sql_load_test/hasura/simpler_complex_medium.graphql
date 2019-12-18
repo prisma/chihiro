@@ -1,0 +1,12 @@
+query MyQuery {
+  sql_load_test_Comment_by_pk(id: $comment_id) {
+    content
+    Likes {
+      id
+      Post {
+        id
+        content
+      }
+    }
+  }
+}

@@ -218,8 +218,8 @@ impl Requester {
             },
             EndpointType::Hasura => {
                 Ok(ServerInfo {
-                    commit: String::from("hasura-rc.1"),
-                    version: String::from("1.0.0-rc.1"),
+                    commit: String::from("hasura-1.0.0"),
+                    version: String::from("1.0.0"),
                     primary_connector: String::from("postgres"),
                 })
             }

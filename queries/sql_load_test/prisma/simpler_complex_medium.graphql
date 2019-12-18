@@ -1,0 +1,13 @@
+query SimplerComplex {
+  findOneComment(where: { id: $comment_id })
+  {
+    content
+    likes {
+      id
+      post {
+        id
+        content
+      }
+    }
+  }
+}

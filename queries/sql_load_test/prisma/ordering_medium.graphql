@@ -1,0 +1,6 @@
+query Ordering {
+  findManyUser(where: { id_lt: 100 }, orderBy: id_DESC)
+  {
+    id
+  }
+}

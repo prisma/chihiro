@@ -1,0 +1,12 @@
+query Pagination {
+  findManyUser(where: { id_lt: 10 }) {
+    posts(first: 2) {
+      content
+      createdAt
+      comments(first: 1) {
+        content
+        createdAt
+      }
+    }
+  }
+}

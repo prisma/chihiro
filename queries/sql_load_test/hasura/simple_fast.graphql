@@ -1,0 +1,7 @@
+query MyQuery {
+  sql_load_test_User_by_pk(id: $user_id) {
+    id
+    firstName
+    lastName
+  }
+}

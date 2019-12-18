@@ -1,4 +1,4 @@
-query MyQuery {
+query Big {
   findManyUser(where: { id_lt: 100 }) {
     posts {
       content

@@ -1,0 +1,5 @@
+query Ordering {
+  sql_load_test_User(where: {id: {_lt: 100}}, order_by: {id: desc}) {
+    id
+  }
+}
