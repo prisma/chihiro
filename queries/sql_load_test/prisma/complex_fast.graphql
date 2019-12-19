@@ -1,5 +1,5 @@
 query Complex {
-  findOneComment(where: { id: $comment_id })
+  findOneComment(where: { post: { id: $post_id } })
   {
     content
     likes(where: { id_gt: 10000 }) {

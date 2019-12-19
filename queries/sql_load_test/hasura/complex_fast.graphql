@@ -1,7 +1,7 @@
 query Complex {
-  sql_load_test_Comment_by_pk(id: 10) {
+  sql_load_test_Comment(where: {Post: {id: {_eq: $post_id}}}) {
     content
-    Likes(where: {id: {_gt: 1000}}) {
+    Likes(where: {id: {_gt: 10000}}) {
       id
       Post {
         id
