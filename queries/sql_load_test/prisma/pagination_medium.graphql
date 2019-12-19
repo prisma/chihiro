@@ -3,7 +3,7 @@ query Pagination {
     posts(first: 2) {
       content
       createdAt
-      comments(first: 1) {
+      comments {
         content
         createdAt
       }

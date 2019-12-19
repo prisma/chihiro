@@ -26,6 +26,7 @@ use tokio::{
 pub enum EndpointType {
     Prisma,
     Hasura,
+    Photon,
 }
 
 impl Default for EndpointType {
@@ -41,6 +42,7 @@ impl FromStr for EndpointType {
         match s {
             "hasura" => Ok(Self::Hasura),
             "prisma" => Ok(Self::Prisma),
+            "photon" => Ok(Self::Photon),
             typ => Err(
                 Error::new(
                     ErrorKind::InvalidInput,
@@ -205,7 +207,7 @@ impl Requester {
 
     pub async fn server_info(&self) -> crate::Result<ServerInfo> {
         match self.endpoint_type {
-            EndpointType::Prisma => {
+            EndpointType::Prisma | EndpointType::Photon => {
                 let builder = hyper::Request::builder()
                     .uri(&format!("{}server_info", self.endpoint_url))
                     .method("GET");
@@ -237,7 +239,7 @@ impl Requester {
 
     pub fn request(&self, query: &Query) -> hyper::client::ResponseFuture {
         let json_data = json!({
-            "query": query.query(),
+            "query": query.query().trim(),
             "variables": {}
         });
 

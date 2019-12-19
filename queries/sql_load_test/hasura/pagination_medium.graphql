@@ -3,7 +3,7 @@ query MyQuery {
     Posts(limit: 2) {
       content
       createdAt
-      Comments(limit: 1) {
+      Comments {
         content
         createdAt
       }

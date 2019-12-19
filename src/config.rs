@@ -106,20 +106,23 @@ impl TestConfig {
                     let entry = entry?;
                     let path = entry.path();
 
-                    if let Some("graphql") = path.extension().and_then(|s| s.to_str()) {
-                        let mut f = File::open(&path)?;
-                        let mut query = String::new();
-                        f.read_to_string(&mut query)?;
+                    match path.extension().and_then(|s| s.to_str()) {
+                        Some("graphql") | Some("json") => {
+                            let mut f = File::open(&path)?;
+                            let mut query = String::new();
+                            f.read_to_string(&mut query)?;
 
-                        let name = Self::parse_name(path);
-                        let rps = self.rps(&name);
+                            let name = Self::parse_name(path);
+                            let rps = self.rps(&name);
 
-                        queries.push(Query {
-                            name,
-                            query,
-                            rps,
-                            variables: test_run.variables.clone(),
-                        });
+                            queries.push(Query {
+                                name,
+                                query,
+                                rps,
+                                variables: test_run.variables.clone(),
+                            });
+                        },
+                        _ => ()
                     }
                 }
             } else {
