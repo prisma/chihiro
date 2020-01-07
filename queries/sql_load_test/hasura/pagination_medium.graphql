@@ -1,12 +1,9 @@
-query MyQuery {
-  sql_load_test_User(where: {id: {_lt: 10}}) {
-    Posts(limit: 2) {
+query Pagination {
+  sql_load_test_Like(limit: 150, offset: 80000, order_by: {id: asc}) {
+    id
+    Post {
+      id
       content
-      createdAt
-      Comments {
-        content
-        createdAt
-      }
     }
   }
 }

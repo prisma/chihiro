@@ -1,12 +1,9 @@
 query Pagination {
-  findManyUser(where: { id_lt: 10 }) {
-    posts(first: 2) {
+  sql_load_test_Like(limit: 150, offset: 80000, order_by: {id: asc}) {
+    id
+    Post {
+      id
       content
-      createdAt
-      comments {
-        content
-        createdAt
-      }
     }
   }
 }
