@@ -1,0 +1,10 @@
+query Meow {
+  findManyUser(
+    where: { firstName: "Face" }
+    orderBy: unique_ASC
+  ) {
+    id
+    firstName
+    lastName
+  }
+}

@@ -1,0 +1,16 @@
+query Baseline {
+  findManyUser(
+    where: { firstName: "Face" }
+    orderBy: unique_ASC
+  ) {
+    id
+    firstName
+    lastName
+    posts(orderBy: unique_ASC) {
+      id
+      comments(orderBy: unique_ASC) {
+        id
+      }
+    }
+  }
+}

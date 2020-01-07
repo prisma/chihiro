@@ -1,0 +1,9 @@
+query Meow {
+  findManyUser(
+    where: { firstName: "Face" }
+  ) {
+    id
+    firstName
+    lastName
+  }
+}
