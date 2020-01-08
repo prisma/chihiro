@@ -1,4 +1,4 @@
 {
     "name": "complex",
-    "postId": $post_id
+    "commentId": $comment_id
 }
