@@ -1,0 +1,6 @@
+query NoJoin {
+  findOneUser(where: { id: $user_id }) {
+    firstName
+    lastName
+  }
+}

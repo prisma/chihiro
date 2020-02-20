@@ -1,0 +1,9 @@
+query OneJoin {
+  findOneUser(where: { id: $user_id }) {
+    firstName
+    lastName
+    posts {
+      content
+    }
+  }
+}
