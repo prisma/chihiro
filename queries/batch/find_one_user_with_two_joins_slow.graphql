@@ -1,0 +1,12 @@
+query TwoJoins {
+  findOneUser(where: { id: $user_id }) {
+    firstName
+    lastName
+    posts {
+      content
+      comments {
+        content
+      }
+    }
+  }
+}

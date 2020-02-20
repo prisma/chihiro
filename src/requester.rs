@@ -1,6 +1,6 @@
 use crate::{
     bar::OptionalBar,
-    config::{Query, QueryConfig},
+    config::{Query, QueryConfig, SingleQuery},
     console_observer::ConsoleObserver,
     json_observer::{JsonObserver, ResponseTime},
 };
@@ -43,12 +43,11 @@ impl FromStr for EndpointType {
             "hasura" => Ok(Self::Hasura),
             "prisma" => Ok(Self::Prisma),
             "photon" => Ok(Self::Photon),
-            typ => Err(
-                Error::new(
-                    ErrorKind::InvalidInput,
-                    format!("Endpoint type '{}' is not supported", typ),
-                ).into()
-            ),
+            typ => Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("Endpoint type '{}' is not supported", typ),
+            )
+            .into()),
         }
     }
 }
@@ -73,7 +72,10 @@ enum ResponseType {
 }
 
 impl Requester {
-    pub fn new(endpoint_type: Option<EndpointType>, endpoint_url: Option<String>) -> crate::Result<Self> {
+    pub fn new(
+        endpoint_type: Option<EndpointType>,
+        endpoint_url: Option<String>,
+    ) -> crate::Result<Self> {
         let mut builder = Client::builder();
         builder.keep_alive(true);
 
@@ -117,7 +119,15 @@ impl Requester {
 
             let pb = pb.clone();
 
-            let requesting = timeout(Duration::from_secs(10), self.request(query));
+            let requesting = match query {
+                Query::Single(single_query) => {
+                    timeout(Duration::from_secs(10), self.request(single_query))
+                }
+                Query::Batch { query, batch } => {
+                    timeout(Duration::from_secs(10), self.batch(query, *batch))
+                }
+            };
+
             let jh: JoinHandle<ResponseType> = tokio::spawn(async move {
                 let start = Instant::now();
                 let res = requesting.await;
@@ -178,7 +188,10 @@ impl Requester {
 
     pub async fn validate(&self, query_config: &QueryConfig, pb: OptionalBar) -> crate::Result<()> {
         for query in query_config.queries() {
-            let res = self.request(&query).await?;
+            let res = match query {
+                Query::Single(single_query) => self.request(single_query).await?,
+                Query::Batch { query, batch } => self.batch(query, *batch).await?,
+            };
 
             pb.inc(1);
 
@@ -193,7 +206,11 @@ impl Requester {
                     return Err(error);
                 }
             } else {
-                let msg = format!("Query {} returned an error: {}", query.name(), res.status().as_str());
+                let msg = format!(
+                    "Query {} returned an error: {}",
+                    query.name(),
+                    res.status().as_str()
+                );
                 let error = Error::new(ErrorKind::InvalidData, msg).into();
 
                 return Err(error);
@@ -217,14 +234,12 @@ impl Requester {
                 let bytes = hyper::body::to_bytes(res.into_body()).await?;
 
                 Ok(serde_json::from_slice(&bytes)?)
-            },
-            EndpointType::Hasura => {
-                Ok(ServerInfo {
-                    commit: String::from("hasura-1.0.0"),
-                    version: String::from("1.0.0"),
-                    primary_connector: String::from("postgres"),
-                })
             }
+            EndpointType::Hasura => Ok(ServerInfo {
+                commit: String::from("hasura-1.0.0"),
+                version: String::from("1.0.0"),
+                primary_connector: String::from("postgres"),
+            }),
         }
     }
 
@@ -237,10 +252,38 @@ impl Requester {
         Ok(observer.drain())
     }
 
-    pub fn request(&self, query: &Query) -> hyper::client::ResponseFuture {
+    pub fn request(&self, query: &SingleQuery) -> hyper::client::ResponseFuture {
         let json_data = json!({
             "query": query.query().trim(),
             "variables": {}
+        });
+
+        let payload = serde_json::to_string(&json_data).unwrap();
+        let content_length = format!("{}", payload.len());
+
+        let builder = hyper::Request::builder()
+            .uri(&self.endpoint_url)
+            .method("POST")
+            .header(CONTENT_LENGTH, &content_length)
+            .header(CONTENT_TYPE, "application/json");
+
+        let request = builder.body(Body::from(payload)).unwrap();
+
+        self.client.request(request)
+    }
+
+    pub fn batch(&self, query: &SingleQuery, batch: u64) -> hyper::client::ResponseFuture {
+        let queries: Vec<serde_json::Value> = (0..batch)
+            .map(|_| {
+                json!({
+                    "query": query.query().trim(),
+                    "variables": {},
+                })
+            })
+            .collect();
+
+        let json_data = json!({
+            "batch": queries,
         });
 
         let payload = serde_json::to_string(&json_data).unwrap();

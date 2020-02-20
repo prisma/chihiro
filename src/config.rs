@@ -23,6 +23,7 @@ pub(super) struct TestRun {
     path: PathBuf,
     #[serde(default = "HashMap::new")]
     variables: HashMap<String, QueryVariable>,
+    batch: Option<u64>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -115,14 +116,21 @@ impl TestConfig {
                             let name = Self::parse_name(path);
                             let rps = self.rps(&name);
 
-                            queries.push(Query {
+                            let query = SingleQuery {
                                 name,
                                 query,
                                 rps,
                                 variables: test_run.variables.clone(),
-                            });
-                        },
-                        _ => ()
+                            };
+
+                            match test_run.batch {
+                                Some(batch) => queries.push(Query::Batch { query, batch }),
+                                None => {
+                                    queries.push(Query::Single(query));
+                                }
+                            }
+                        }
+                        _ => (),
                     }
                 }
             } else {
@@ -133,12 +141,19 @@ impl TestConfig {
                 let name = Self::parse_name(&test_run.path);
                 let rps = self.rps(&name);
 
-                queries.push(Query {
+                let query = SingleQuery {
                     name,
                     query,
                     rps,
                     variables: test_run.variables,
-                });
+                };
+
+                match test_run.batch {
+                    Some(batch) => queries.push(Query::Batch { query, batch }),
+                    None => {
+                        queries.push(Query::Single(query));
+                    }
+                }
             }
         }
 

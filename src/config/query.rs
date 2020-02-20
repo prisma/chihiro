@@ -18,14 +18,36 @@ pub struct QueryVariable {
 }
 
 #[derive(Debug)]
-pub struct Query {
+pub enum Query {
+    Single(SingleQuery),
+    Batch { query: SingleQuery, batch: u64 },
+}
+
+impl Query {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Single(q) => q.name(),
+            Self::Batch { query, batch: _ } => query.name(),
+        }
+    }
+
+    pub fn rps(&self) -> &[u64] {
+        match self {
+            Self::Single(q) => q.rps(),
+            Self::Batch { query, batch: _ } => query.rps(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct SingleQuery {
     pub(super) name: String,
     pub(super) query: String,
     pub(super) rps: Vec<u64>,
     pub(super) variables: HashMap<String, QueryVariable>,
 }
 
-impl Query {
+impl SingleQuery {
     pub fn query(&self) -> String {
         let mut rng = rand::thread_rng();
 
@@ -71,7 +93,10 @@ impl QueryConfig {
     }
 
     pub fn test_count(&self) -> usize {
-        self.queries.iter().fold(0, |acc, q| acc + q.rps.len())
+        self.queries.iter().fold(0, |acc, q| match q {
+            Query::Single(q) => acc + q.rps.len(),
+            Query::Batch { query, batch: _ } => acc + query.rps.len(),
+        })
     }
 
     pub fn queries(&self) -> impl Iterator<Item = &Query> {
