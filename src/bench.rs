@@ -1,4 +1,7 @@
-use crate::{bar, config::QueryConfig, metrics_sender::MetricsSender, requester::Requester};
+use crate::{
+    bar, config::QueryConfig, metrics_sender::MetricsSender, metrics_storage::MetricsStorage,
+    requester::Requester,
+};
 use bar::OptionalBar;
 use chrono::Duration;
 use console::style;
@@ -9,12 +12,13 @@ pub struct Bench {
     opts: crate::BenchOpt,
     query_config: QueryConfig,
     metrics_sender: MetricsSender,
+    metrics_storage: MetricsStorage,
     spinner: ProgressStyle,
     requester: Requester,
 }
 
 impl Bench {
-    pub fn new(opts: crate::BenchOpt) -> crate::Result<Self> {
+    pub async fn new(opts: crate::BenchOpt) -> crate::Result<Self> {
         let requester = Requester::new(opts.endpoint_type, opts.endpoint_url.clone())?;
         let query_config = QueryConfig::new(&opts.query_file)?;
 
@@ -31,6 +35,8 @@ impl Bench {
             &elastic_password,
         );
 
+        let metrics_storage = MetricsStorage::new("file:metrics.db").await?;
+
         let spinner = ProgressStyle::default_spinner()
             .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
             .template("{prefix:.bold.cyan} [{elapsed_precise:.bold.dim}] {wide_msg}");
@@ -39,6 +45,7 @@ impl Bench {
             opts,
             query_config,
             metrics_sender,
+            metrics_storage,
             spinner,
             requester,
         })
@@ -91,6 +98,7 @@ impl Bench {
 
             let metrics = self.requester.json_metrics(query.name(), rps).await?;
             self.metrics_sender.send(&metrics).await?;
+            self.metrics_storage.store(&metrics).await?;
 
             println!("{}", self.requester.console_metrics());
         }
