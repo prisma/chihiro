@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
 cargo run --release -- setup --private-key hetzner_key --user prisma bm-app-psql.prisma.io:22
-cargo run --release -- bench --metrics-database prisma_benchmark --validate --endpoint-url http://bm-app-psql.prisma.io/eval-server/photon/ --query-file photon.toml --endpoint-type photon
-cargo run --release -- bench --metrics-database prisma_benchmark --validate --endpoint-url http://bm-app-psql.prisma.io/eval-server/raw_sql/ --query-file photon.toml --endpoint-type photon
-cargo run --release -- bench --metrics-database prisma_benchmark --validate --endpoint-url http://bm-app-psql.prisma.io/eval-server/sequelize/ --query-file photon.toml --endpoint-type photon
-cargo run --release -- bench --metrics-database prisma_benchmark --validate --endpoint-url http://bm-app-psql.prisma.io/eval-server/type_orm/ --query-file photon.toml --endpoint-type photon
 cargo run --release -- bench --metrics-database prisma_benchmark --validate --endpoint-url http://bm-app-psql.prisma.io/sql_load_test/ --query-file sql_load_test.toml
-cargo run --release -- bench --metrics-database prisma_benchmark --validate --endpoint-url http://bm-app-psql.prisma.io/hasura/v1/graphql/ --query-file hasura.toml --endpoint-type hasura
+cargo run --release -- stdout-report --connector postgres
+cargo run --release -- slack-report --connector postgres

@@ -1,5 +1,5 @@
 use super::Reporter;
-use crate::response_summary::ResponseSummary;
+use crate::response_summary::{ResponseSummary, ConnectorType};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde_json::{json, Value};
@@ -36,7 +36,7 @@ impl SlackReporter {
 
 #[async_trait]
 impl Reporter for SlackReporter {
-    async fn from_sqlite(&self, path: &str, connector: &str) -> crate::Result<()> {
+    async fn from_sqlite(&self, path: &str, connector: ConnectorType) -> crate::Result<()> {
         let summary = ResponseSummary::find_from_sqlite(path, connector).await?;
         let (previous_id, next_id) = summary.commits();
 

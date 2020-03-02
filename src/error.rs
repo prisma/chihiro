@@ -6,6 +6,8 @@ pub enum Error {
     NotEnoughMeasurements(String),
     #[error("Endpoint type '{}' is not supported", _0)]
     InvalidEndpointType(String),
+    #[error("Database type '{}' is not supported", _0)]
+    InvalidDatabaseType(String),
     #[error("Query {} returned an error: {}", query, error)]
     InvalidQuery { query: String, error: serde_json::Value },
     #[error("Error querying database: {}", _0)]

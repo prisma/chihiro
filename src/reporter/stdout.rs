@@ -1,5 +1,5 @@
 use super::Reporter;
-use crate::response_summary::ResponseSummary;
+use crate::response_summary::{ResponseSummary, ConnectorType};
 use async_trait::async_trait;
 use console::{pad_str, style, Alignment};
 
@@ -7,7 +7,7 @@ pub struct StdoutReporter;
 
 #[async_trait]
 impl Reporter for StdoutReporter {
-    async fn from_sqlite(&self, path: &str, connector: &str) -> crate::Result<()> {
+    async fn from_sqlite(&self, path: &str, connector: ConnectorType) -> crate::Result<()> {
         let summary = ResponseSummary::find_from_sqlite(path, connector).await?;
         let (previous_id, next_id) = summary.commits();
         let padding = summary.longest_query();

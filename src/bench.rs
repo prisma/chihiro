@@ -6,7 +6,6 @@ use bar::OptionalBar;
 use chrono::Duration;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{env, io};
 
 pub struct Bench {
     opts: crate::BenchOpt,
@@ -22,17 +21,11 @@ impl Bench {
         let requester = Requester::new(opts.endpoint_type, opts.endpoint_url.clone())?;
         let query_config = QueryConfig::new(&opts.query_file)?;
 
-        let elastic_user = env::var("ELASTIC_USER")
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "ELASTIC_USER not set"))?;
-
-        let elastic_password = env::var("ELASTIC_PW")
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "ELASTIC_PW not set"))?;
-
         let metrics_sender = MetricsSender::new(
             query_config.elastic_endpoint(),
             &opts.metrics_database,
-            &elastic_user,
-            &elastic_password,
+            &opts.elastic_user,
+            &opts.elastic_password,
         );
 
         let metrics_storage = MetricsStorage::new(&opts.sqlite_path).await?;

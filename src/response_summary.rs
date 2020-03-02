@@ -1,7 +1,40 @@
 use quaint::{ast::avg, prelude::*, single::Quaint};
 use serde::Deserialize;
-use std::{collections::BTreeMap};
+use std::{collections::BTreeMap, str::FromStr, string::ToString};
 use crate::error::Error;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ConnectorType {
+    Postgres,
+    Mysql
+}
+
+impl ToString for ConnectorType {
+    fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
+}
+
+impl ConnectorType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Postgres => "postgres",
+            Self::Mysql => "mysql"
+        }
+    }
+}
+
+impl FromStr for ConnectorType {
+    type Err = Error;
+
+    fn from_str(s: &str) -> crate::Result<Self> {
+        match s {
+            "postgres" | "postgresql" => Ok(Self::Postgres),
+            "mysql" => Ok(Self::Mysql),
+            typ => Err(Error::InvalidDatabaseType(typ.into())),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub struct ResponseAverage {
@@ -19,12 +52,12 @@ pub struct ResponseSummary {
 }
 
 impl ResponseSummary {
-    pub async fn find_from_sqlite(path: &str, connector: &str) -> crate::Result<Self> {
+    pub async fn find_from_sqlite(path: &str, connector: ConnectorType) -> crate::Result<Self> {
         let db = Quaint::new(path).await?;
 
         let selected_versions = Select::from_table("version")
             .column("id")
-            .so_that("connector".equals(connector))
+            .so_that("connector".equals(connector.as_str()))
             .order_by("id".descend())
             .limit(2);
 
@@ -51,7 +84,7 @@ impl ResponseSummary {
         }
 
         if summary.next_averages.is_empty() {
-            Err(Error::NotEnoughMeasurements(connector.into()))
+            Err(Error::NotEnoughMeasurements(connector.to_string()))
         } else {
             Ok(summary)
         }
