@@ -45,7 +45,7 @@ pub(super) struct TestConfig {
 }
 
 impl TryFrom<&str> for TestConfig {
-    type Error = Box<dyn std::error::Error>;
+    type Error = crate::error::Error;
 
     fn try_from(path: &str) -> crate::Result<Self> {
         let mut f = File::open(path)?;

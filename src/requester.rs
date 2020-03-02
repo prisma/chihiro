@@ -3,6 +3,7 @@ use crate::{
     config::{Query, QueryConfig, SingleQuery},
     console_observer::ConsoleObserver,
     json_observer::{JsonObserver, ResponseTime},
+    error::Error,
 };
 use console::style;
 use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
@@ -13,7 +14,6 @@ use serde::Deserialize;
 use serde_json::json;
 use std::{
     collections::HashSet,
-    io::{Error, ErrorKind},
     str::FromStr,
     time::{Duration, Instant},
 };
@@ -36,18 +36,14 @@ impl Default for EndpointType {
 }
 
 impl FromStr for EndpointType {
-    type Err = Box<dyn std::error::Error>;
+    type Err = Error;
 
     fn from_str(s: &str) -> crate::Result<Self> {
         match s {
             "hasura" => Ok(Self::Hasura),
             "prisma" => Ok(Self::Prisma),
             "photon" => Ok(Self::Photon),
-            typ => Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("Endpoint type '{}' is not supported", typ),
-            )
-            .into()),
+            typ => Err(Error::InvalidEndpointType(typ.into())),
         }
     }
 }
@@ -72,16 +68,11 @@ enum ResponseType {
 }
 
 impl Requester {
-    pub fn new(
-        endpoint_type: Option<EndpointType>,
-        endpoint_url: Option<String>,
-    ) -> crate::Result<Self> {
+    pub fn new(endpoint_type: Option<EndpointType>, endpoint_url: String) -> crate::Result<Self> {
         let mut builder = Client::builder();
         builder.keep_alive(true);
 
         let client = builder.build(HttpConnector::new());
-        let endpoint_url = endpoint_url.unwrap_or_else(|| String::from("http://localhost:4466/"));
-
         let receiver = Receiver::builder().build()?;
         let endpoint_type = endpoint_type.unwrap_or(EndpointType::Prisma);
 
@@ -200,20 +191,16 @@ impl Requester {
                 let json: serde_json::Value = serde_json::from_slice(bytes.as_ref())?;
 
                 if json["errors"] != serde_json::Value::Null {
-                    let msg = format!("Query {} returned an error: {}", query.name(), json);
-                    let error = Error::new(ErrorKind::InvalidData, msg).into();
-
-                    return Err(error);
+                    return Err(Error::InvalidQuery {
+                        query: query.name().into(),
+                        error: json,
+                    });
                 }
             } else {
-                let msg = format!(
-                    "Query {} returned an error: {}",
-                    query.name(),
-                    res.status().as_str()
-                );
-                let error = Error::new(ErrorKind::InvalidData, msg).into();
-
-                return Err(error);
+                return Err(Error::InvalidQuery {
+                    query: query.name().into(),
+                    error: serde_json::Value::String(res.status().as_str().into())
+                });
             }
         }
 

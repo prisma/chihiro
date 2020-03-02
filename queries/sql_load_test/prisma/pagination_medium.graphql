@@ -1,7 +1,7 @@
 query Pagination {
-  sql_load_test_Like(limit: 150, offset: 80000, order_by: {id: asc}) {
+  findManyLike(first: 150, skip: 80000, orderBy: id_ASC) {
     id
-    Post {
+    post {
       id
       content
     }

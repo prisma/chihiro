@@ -1,8 +1,8 @@
 use crate::requester::ServerInfo;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use hdrhistogram::Histogram;
 use metrics_core::{Drain, Key, Observer};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub struct JsonObserver {
     response_times: Histogram<u64>,
@@ -13,7 +13,7 @@ pub struct JsonObserver {
     rps: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResponseTime {
     commit: String,
@@ -27,6 +27,54 @@ pub struct ResponseTime {
     failures: u64,
     time: String,
     version: String,
+}
+
+impl ResponseTime {
+    pub fn commit(&self) -> &str {
+        &self.commit
+    }
+
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+
+    pub fn connector(&self) -> &str {
+        &self.connector
+    }
+
+    pub fn query_name(&self) -> &str {
+        &self.query_name
+    }
+
+    pub fn p50(&self) -> u64 {
+        self.p50
+    }
+
+    pub fn p95(&self) -> u64 {
+        self.p95
+    }
+
+    pub fn p99(&self) -> u64 {
+        self.p99
+    }
+
+    pub fn rps(&self) -> u64 {
+        self.rps
+    }
+
+    pub fn successes(&self) -> u64 {
+        self.successes
+    }
+
+    pub fn failures(&self) -> u64 {
+        self.failures
+    }
+
+    pub fn time(&self) -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339(&self.time)
+            .unwrap()
+            .with_timezone(&Utc)
+    }
 }
 
 impl JsonObserver {
