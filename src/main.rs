@@ -10,15 +10,16 @@ mod reporter;
 mod requester;
 mod response_summary;
 mod server;
+mod error;
 
 use bench::Bench;
-use reporter::Reporter;
-use reporter::StdoutReporter;
+use reporter::{Reporter, SlackReporter, StdoutReporter};
 use server::Server;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use error::Error;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+type Result<T> = std::result::Result<T, error::Error>;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct BenchOpt {
@@ -40,6 +41,8 @@ pub struct BenchOpt {
     /// The GraphQL endpoint type. (prisma|hasura)
     #[structopt(long)]
     endpoint_type: Option<requester::EndpointType>,
+    #[structopt(long, default_value = "file:metrics.db")]
+    sqlite_path: String,
 }
 
 #[derive(Debug, StructOpt, Clone)]
@@ -61,9 +64,21 @@ pub struct SetupOpt {
 }
 
 #[derive(Debug, StructOpt, Clone)]
-pub struct ReportOpt {
+pub struct StdoutReportOpt {
     #[structopt(long, default_value = "file:metrics.db")]
-    database_path: String,
+    sqlite_path: String,
+    #[structopt(long)]
+    connector: String,
+}
+
+#[derive(Debug, StructOpt, Clone)]
+pub struct SlackReportOpt {
+    #[structopt(long)]
+    webhook_url: String,
+    #[structopt(long, default_value = "file:metrics.db")]
+    sqlite_path: String,
+    #[structopt(long)]
+    connector: String,
 }
 
 #[derive(Debug, StructOpt, Clone)]
@@ -76,7 +91,9 @@ pub enum Opt {
     /// Set up remote app server
     Setup(SetupOpt),
     /// Print last report statistics to the console
-    Report(ReportOpt),
+    StdoutReport(StdoutReportOpt),
+    /// Send last report statistics to Slack
+    SlackReport(SlackReportOpt),
 }
 
 #[tokio::main]
@@ -87,6 +104,27 @@ async fn main() -> Result<()> {
         Opt::Bench(bench_opts) => Bench::new(bench_opts).await?.run().await,
         Opt::Kibana(kibana_opts) => kibana::generate(kibana_opts),
         Opt::Setup(setup_opts) => Server::new(setup_opts)?.setup(),
-        Opt::Report(report_opts) => StdoutReporter.from_sqlite(&report_opts.database_path).await,
+        Opt::StdoutReport(report_opts) => {
+            let result = StdoutReporter.from_sqlite(&report_opts.sqlite_path, &report_opts.connector).await;
+
+            if let Err(e @ Error::NotEnoughMeasurements(..)) = result {
+                println!("{}", e);
+                Ok(())
+            } else {
+                result
+            }
+        }
+        Opt::SlackReport(report_opts) => {
+            let result = SlackReporter::new(&report_opts.webhook_url)
+                .from_sqlite(&report_opts.sqlite_path, &report_opts.connector)
+                .await;
+
+            if let Err(e @ Error::NotEnoughMeasurements(..)) = result {
+                println!("{}", e);
+                Ok(())
+            } else {
+                result
+            }
+        }
     }
 }

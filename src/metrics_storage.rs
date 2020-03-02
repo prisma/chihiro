@@ -6,9 +6,9 @@ pub struct MetricsStorage {
 }
 
 impl MetricsStorage {
-    pub async fn new(path: &str) -> crate::Result<Self> {
+    pub async fn new(uri: &str) -> crate::Result<Self> {
         Ok(Self {
-            db: Quaint::new(path).await?,
+            db: Quaint::new(uri).await?,
         })
     }
 

@@ -35,7 +35,7 @@ impl Bench {
             &elastic_password,
         );
 
-        let metrics_storage = MetricsStorage::new("file:metrics.db").await?;
+        let metrics_storage = MetricsStorage::new(&opts.sqlite_path).await?;
 
         let spinner = ProgressStyle::default_spinner()
             .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")

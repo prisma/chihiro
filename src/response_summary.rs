@@ -1,6 +1,7 @@
-use quaint::{ast::avg, prelude::*, serde::from_rows, single::Quaint};
+use quaint::{ast::avg, prelude::*, single::Quaint};
 use serde::Deserialize;
-use std::{collections::BTreeMap, io};
+use std::{collections::BTreeMap};
+use crate::error::Error;
 
 #[derive(Debug, Deserialize)]
 pub struct ResponseAverage {
@@ -18,11 +19,12 @@ pub struct ResponseSummary {
 }
 
 impl ResponseSummary {
-    pub async fn find_from_sqlite(path: &str) -> crate::Result<Self> {
+    pub async fn find_from_sqlite(path: &str, connector: &str) -> crate::Result<Self> {
         let db = Quaint::new(path).await?;
 
-        let inner_select = Select::from_table("version")
+        let selected_versions = Select::from_table("version")
             .column("id")
+            .so_that("connector".equals(connector))
             .order_by("id".descend())
             .limit(2);
 
@@ -35,13 +37,13 @@ impl ResponseSummary {
             .inner_join(
                 "version".on(("version", "id").equals(Column::from(("response_time", "version")))),
             )
-            .so_that(Column::from(("version", "id")).in_selection(inner_select))
+            .so_that(Column::from(("version", "id")).in_selection(selected_versions))
             .group_by(Column::from(("response_time", "query_name")))
             .group_by(Column::from(("version", "commit_id")))
             .order_by(Column::from(("version", "id")).descend())
             .order_by(Column::from(("response_time", "query_name")).ascend());
 
-        let times: Vec<ResponseAverage> = from_rows(db.select(select).await?)?;
+        let times: Vec<ResponseAverage> = quaint::serde::from_rows(db.select(select).await?)?;
         let mut summary = Self::default();
 
         for time in times.into_iter() {
@@ -49,10 +51,7 @@ impl ResponseSummary {
         }
 
         if summary.next_averages.is_empty() {
-            Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "Not enough measurements",
-            ))?
+            Err(Error::NotEnoughMeasurements(connector.into()))
         } else {
             Ok(summary)
         }
@@ -77,10 +76,10 @@ impl ResponseSummary {
     pub fn longest_query(&self) -> usize {
         self.next_averages
             .iter()
-            .fold(0, |acc, (key, _)| match acc {
-                x if key.len() > x => key.len(),
-                _ => acc,
-            })
+            .max_by(|x,y| x.0.len().cmp(&y.0.len()))
+            .unwrap()
+            .0
+            .len()
     }
 
     fn insert(&mut self, value: ResponseAverage) {
