@@ -8,4 +8,4 @@ DATABASE=$1
 (docker kill $(docker ps -aq); docker rm $(docker ps -aq)) || :
 docker system prune -f
 docker pull prismagraphql/build:test
-docker run -v $(pwd):/build -w /build -e ELASTIC_USER=$ELASTIC_USER -e ELASTIC_PW=$ELASTIC_PW -e RUST_BACKTRACE=$RUST_BACKTRACE -e SLACK_WEBHOOK_URL=$SLACK_WEBHOOK_URL prismagraphql/build:test /build/.buildkite/$DATABASE.sh
+docker run -v $(pwd):/build -w /build -e ELASTIC_USER=$ELASTIC_USER -e ELASTIC_PW=$ELASTIC_PW -e RUST_BACKTRACE=$RUST_BACKTRACE -e SLACK_WEBHOOK_URL=$SLACK_WEBHOOK_URL -e SECONDARY_STORAGE=$SECONDARY_STORAGE prismagraphql/build:test /build/.buildkite/$DATABASE.sh
