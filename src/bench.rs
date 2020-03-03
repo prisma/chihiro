@@ -1,6 +1,6 @@
 use crate::{
-    bar, config::QueryConfig, metrics_sender::MetricsSender, metrics_storage::MetricsStorage,
-    requester::Requester,
+    bar, config::QueryConfig, error::Error, metrics_sender::MetricsSender,
+    metrics_storage::MetricsStorage, requester::Requester,
 };
 use bar::OptionalBar;
 use chrono::Duration;
@@ -28,7 +28,7 @@ impl Bench {
             &opts.elastic_password,
         );
 
-        let metrics_storage = MetricsStorage::new(&opts.sqlite_path).await?;
+        let metrics_storage = MetricsStorage::new(&opts.secondary_storage).await?;
 
         let spinner = ProgressStyle::default_spinner()
             .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
@@ -45,7 +45,21 @@ impl Bench {
     }
 
     pub async fn run(&mut self) -> crate::Result<()> {
-        self.print_info().await?;
+        let info = self.requester.server_info().await?;
+
+        if self.metrics_storage.contains(&info).await? {
+            return Err(Error::AlreadyMeasured {
+                commit_id: info.commit,
+                connector: info.primary_connector,
+            });
+        }
+
+        println!(
+            "Server info :: commit: {}, version: {}, primary_connector: {}",
+            style(&format!("{}", info.commit)).bold(),
+            style(&format!("{}", info.version)).bold(),
+            style(&format!("{}", info.primary_connector)).bold(),
+        );
 
         if self.opts.validate {
             self.validate().await?;
@@ -95,19 +109,6 @@ impl Bench {
 
             println!("{}", self.requester.console_metrics());
         }
-
-        Ok(())
-    }
-
-    async fn print_info(&self) -> crate::Result<()> {
-        let info = self.requester.server_info().await?;
-
-        println!(
-            "Server info :: commit: {}, version: {}, primary_connector: {}",
-            style(&format!("{}", info.commit)).bold(),
-            style(&format!("{}", info.version)).bold(),
-            style(&format!("{}", info.primary_connector)).bold(),
-        );
 
         Ok(())
     }

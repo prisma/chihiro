@@ -2,6 +2,7 @@ mod bar;
 mod bench;
 mod config;
 mod console_observer;
+mod error;
 mod json_observer;
 mod kibana;
 mod metrics_sender;
@@ -10,15 +11,14 @@ mod reporter;
 mod requester;
 mod response_summary;
 mod server;
-mod error;
 
 use bench::Bench;
+use error::Error;
 use reporter::{Reporter, SlackReporter, StdoutReporter};
 use response_summary::ConnectorType;
 use server::Server;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use error::Error;
 
 type Result<T> = std::result::Result<T, error::Error>;
 
@@ -42,9 +42,9 @@ pub struct BenchOpt {
     /// The GraphQL endpoint type. (prisma|hasura)
     #[structopt(long)]
     endpoint_type: Option<requester::EndpointType>,
-    /// Path to the local SQLite database
-    #[structopt(long, default_value = "file:metrics.db")]
-    sqlite_path: String,
+    /// Path to the local secondary database
+    #[structopt(long, default_value = "file:metrics.db", env = "SECONDARY_STORAGE")]
+    secondary_storage: String,
     /// Username to the ElasticSearch database
     #[structopt(long, env = "ELASTIC_USER")]
     elastic_user: String,
@@ -79,9 +79,9 @@ pub struct SetupOpt {
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct StdoutReportOpt {
-    /// Path to the local SQLite database
-    #[structopt(long, default_value = "file:metrics.db")]
-    sqlite_path: String,
+    /// Path to the local secondary database
+    #[structopt(long, default_value = "file:metrics.db", env = "SECONDARY_STORAGE")]
+    secondary_storage: String,
     /// The connector to get the reports from (postgres|mysql)
     #[structopt(long)]
     connector: ConnectorType,
@@ -92,9 +92,9 @@ pub struct SlackReportOpt {
     /// The webhook URI for sending the report
     #[structopt(long, env = "SLACK_WEBHOOK_URL")]
     webhook_url: String,
-    /// Path to the local SQLite database
-    #[structopt(long, default_value = "file:metrics.db")]
-    sqlite_path: String,
+    /// Path to the local secondary database
+    #[structopt(long, default_value = "file:metrics.db", env = "SECONDARY_STORAGE")]
+    secondary_storage: String,
     /// The connector to get the reports from (postgres|mysql)
     #[structopt(long)]
     connector: ConnectorType,
@@ -120,11 +120,22 @@ async fn main() -> Result<()> {
     env_logger::init();
 
     match Opt::from_args() {
-        Opt::Bench(bench_opts) => Bench::new(bench_opts).await?.run().await,
+        Opt::Bench(bench_opts) => {
+            let result = Bench::new(bench_opts).await?.run().await;
+
+            if let Err(e @ Error::AlreadyMeasured { .. }) = result {
+                println!("{}", e);
+                Ok(())
+            } else {
+                result
+            }
+        }
         Opt::Kibana(kibana_opts) => kibana::generate(kibana_opts),
         Opt::Setup(setup_opts) => Server::new(setup_opts)?.setup(),
         Opt::StdoutReport(report_opts) => {
-            let result = StdoutReporter.from_sqlite(&report_opts.sqlite_path, report_opts.connector).await;
+            let result = StdoutReporter
+                .report(&report_opts.secondary_storage, report_opts.connector)
+                .await;
 
             if let Err(e @ Error::NotEnoughMeasurements(..)) = result {
                 println!("{}", e);
@@ -135,7 +146,7 @@ async fn main() -> Result<()> {
         }
         Opt::SlackReport(report_opts) => {
             let result = SlackReporter::new(&report_opts.webhook_url)
-                .from_sqlite(&report_opts.sqlite_path, report_opts.connector)
+                .report(&report_opts.secondary_storage, report_opts.connector)
                 .await;
 
             if let Err(e @ Error::NotEnoughMeasurements(..)) = result {

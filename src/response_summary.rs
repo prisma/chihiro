@@ -1,12 +1,12 @@
+use crate::error::Error;
 use quaint::{ast::avg, prelude::*, single::Quaint};
 use serde::Deserialize;
 use std::{collections::BTreeMap, str::FromStr, string::ToString};
-use crate::error::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ConnectorType {
     Postgres,
-    Mysql
+    Mysql,
 }
 
 impl ToString for ConnectorType {
@@ -19,7 +19,7 @@ impl ConnectorType {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Postgres => "postgres",
-            Self::Mysql => "mysql"
+            Self::Mysql => "mysql",
         }
     }
 }
@@ -52,8 +52,8 @@ pub struct ResponseSummary {
 }
 
 impl ResponseSummary {
-    pub async fn find_from_sqlite(path: &str, connector: ConnectorType) -> crate::Result<Self> {
-        let db = Quaint::new(path).await?;
+    pub async fn aggregate(url: &str, connector: ConnectorType) -> crate::Result<Self> {
+        let db = Quaint::new(url).await?;
 
         let selected_versions = Select::from_table("version")
             .column("id")
@@ -73,6 +73,7 @@ impl ResponseSummary {
             .so_that(Column::from(("version", "id")).in_selection(selected_versions))
             .group_by(Column::from(("response_time", "query_name")))
             .group_by(Column::from(("version", "commit_id")))
+            .group_by(Column::from(("version", "id")))
             .order_by(Column::from(("version", "id")).descend())
             .order_by(Column::from(("response_time", "query_name")).ascend());
 
@@ -109,7 +110,7 @@ impl ResponseSummary {
     pub fn longest_query(&self) -> usize {
         self.next_averages
             .iter()
-            .max_by(|x,y| x.0.len().cmp(&y.0.len()))
+            .max_by(|x, y| x.0.len().cmp(&y.0.len()))
             .unwrap()
             .0
             .len()

@@ -2,8 +2,8 @@ use crate::{
     bar::OptionalBar,
     config::{Query, QueryConfig, SingleQuery},
     console_observer::ConsoleObserver,
-    json_observer::{JsonObserver, ResponseTime},
     error::Error,
+    json_observer::{JsonObserver, ResponseTime},
 };
 use console::style;
 use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
@@ -199,7 +199,7 @@ impl Requester {
             } else {
                 return Err(Error::InvalidQuery {
                     query: query.name().into(),
-                    error: serde_json::Value::String(res.status().as_str().into())
+                    error: serde_json::Value::String(res.status().as_str().into()),
                 });
             }
         }

@@ -2,14 +2,29 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Not enough measurements in the database for connector '{}' to report differences.", _0)]
+    #[error(
+        "Not enough measurements in the database for connector '{}' to report differences.",
+        _0
+    )]
     NotEnoughMeasurements(String),
+    #[error(
+        "Already measured connector '{}' with commit id '{}'",
+        connector,
+        commit_id
+    )]
+    AlreadyMeasured {
+        commit_id: String,
+        connector: String,
+    },
     #[error("Endpoint type '{}' is not supported", _0)]
     InvalidEndpointType(String),
     #[error("Database type '{}' is not supported", _0)]
     InvalidDatabaseType(String),
     #[error("Query {} returned an error: {}", query, error)]
-    InvalidQuery { query: String, error: serde_json::Value },
+    InvalidQuery {
+        query: String,
+        error: serde_json::Value,
+    },
     #[error("Error querying database: {}", _0)]
     Quaint(quaint::error::Error),
     #[error("IO Error: {}", _0)]
@@ -29,7 +44,6 @@ impl From<quaint::error::Error> for Error {
         Self::Quaint(e)
     }
 }
-
 
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
