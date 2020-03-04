@@ -1,0 +1,25 @@
+datasource db {
+  provider = "postgresql"
+  url      = "postgres://postgres:prisma@localhost:5432/prisma"
+}
+
+model response_time {
+  id         Int      @default(autoincrement()) @id
+  failures   Int
+  p50        Int
+  p95        Int
+  p99        Int
+  query_name String
+  rps        Int
+  successes  Int
+  time       DateTime
+  version    version
+}
+
+model version {
+  id            Int             @default(autoincrement()) @id
+  commit_id     String
+  connector     String
+  version       String
+  response_time response_time[]
+}
