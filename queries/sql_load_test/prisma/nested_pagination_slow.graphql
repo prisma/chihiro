@@ -1,0 +1,15 @@
+query NestedPagination {
+  findManyUser(first: 100) {
+    id
+    firstName
+    lastName
+    posts(skip: 5, orderBy: id_DESC) {
+      id
+      content
+      comments(first: 3, orderBy: id_DESC) {
+        id
+        content
+      }
+    }
+  }
+}

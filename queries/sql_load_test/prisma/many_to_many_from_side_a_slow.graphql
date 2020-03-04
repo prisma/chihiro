@@ -1,0 +1,8 @@
+query ManyToManyFromSideA {
+  findManyUser(where: { id_lt: 100 }) {
+    id
+    firstName
+    lastName
+    friendWith { id firstName lastName }
+  }
+}
