@@ -32,6 +32,86 @@ impl SlackReporter {
             format!(":x:*{}*", text)
         }
     }
+
+    fn blocks_with_data(title: String, p50: f64, p95: f64, p99: f64) -> serde_json::Value {
+        let p50_title = Self::format_title(p50, "p50");
+        let p95_title = Self::format_title(p95, "p95");
+        let p99_title = Self::format_title(p99, "p99");
+
+        let p50 = Self::format_number(p50);
+        let p95 = Self::format_number(p95);
+        let p99 = Self::format_number(p99);
+
+        json!({
+            "type": "section",
+            "text": {
+                "text": title,
+                "type": "mrkdwn"
+            },
+            "fields": [
+                {
+                    "text": p50_title,
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": p50,
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": p95_title,
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": p95,
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": p99_title,
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": p99,
+                    "type": "mrkdwn"
+                }
+            ]
+        })
+    }
+
+    fn new_blocks(title: String) -> serde_json::Value {
+        json!({
+            "type": "section",
+            "text": {
+                "text": title,
+                "type": "mrkdwn"
+            },
+            "fields": [
+                {
+                    "text": "_p50_",
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": "_new_",
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": "_p95_",
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": "_new_",
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": "_p99_",
+                    "type": "mrkdwn"
+                },
+                {
+                    "text": "_new_",
+                    "type": "mrkdwn"
+                }
+            ]
+        })
+    }
 }
 
 #[async_trait]
@@ -63,54 +143,21 @@ impl Reporter for SlackReporter {
             "type": "divider"
         }));
 
-        for (query, p50, p95, p99) in summary.differences() {
-            let p50_title = Self::format_title(p50, "p50");
-            let p95_title = Self::format_title(p95, "p95");
-            let p99_title = Self::format_title(p99, "p99");
-
-            let p50 = Self::format_number(p50);
-            let p95 = Self::format_number(p95);
-            let p99 = Self::format_number(p99);
-
-            let query = format!(
+        for (query, diffs) in summary.differences() {
+            let title = format!(
                 "Query: <https://github.com/prisma/chihiro/blob/master/queries/sql_load_test/prisma/{}.graphql|{}>",
                 query,
                 query
             );
 
-            blocks.push(json!({
-                "type": "section",
-                "text": {
-                    "text": query,
-                    "type": "mrkdwn"
-                },
-                "fields": [
-                    {
-                        "text": p50_title,
-                        "type": "mrkdwn"
-                    },
-                    {
-                        "text": p50,
-                        "type": "mrkdwn"
-                    },
-                    {
-                        "text": p95_title,
-                        "type": "mrkdwn"
-                    },
-                    {
-                        "text": p95,
-                        "type": "mrkdwn"
-                    },
-                    {
-                        "text": p99_title,
-                        "type": "mrkdwn"
-                    },
-                    {
-                        "text": p99,
-                        "type": "mrkdwn"
-                    }
-                ]
-            }));
+            match diffs {
+                Some((p50, p95, p99)) => {
+                    blocks.push(Self::blocks_with_data(title, p50, p95, p99));
+                }
+                None => {
+                    blocks.push(Self::new_blocks(title));
+                }
+            }
         }
 
         let payload = json!({ "blocks": Value::from(blocks) });

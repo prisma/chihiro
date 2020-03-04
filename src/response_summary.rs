@@ -91,18 +91,22 @@ impl ResponseSummary {
         }
     }
 
-    pub fn differences(&self) -> Vec<(&str, f64, f64, f64)> {
+    pub fn differences(&self) -> Vec<(&str, Option<(f64, f64, f64)>)> {
         self.next_averages
             .iter()
             .map(|(key, next)| {
-                let previous = self.previous_averages.get(key).unwrap();
-
-                (
-                    next.query_name.as_str(),
-                    (1.0 - next.p50 / previous.p50) * 100.0,
-                    (1.0 - next.p95 / previous.p95) * 100.0,
-                    (1.0 - next.p99 / previous.p99) * 100.0,
-                )
+                let query_name = next.query_name.as_str();
+                match self.previous_averages.get(key) {
+                    Some(previous) => (
+                        query_name,
+                        Some((
+                            (1.0 - next.p50 / previous.p50) * 100.0,
+                            (1.0 - next.p95 / previous.p95) * 100.0,
+                            (1.0 - next.p99 / previous.p99) * 100.0,
+                        )),
+                    ),
+                    None => (query_name, None),
+                }
             })
             .collect()
     }
