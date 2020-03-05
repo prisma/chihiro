@@ -96,13 +96,14 @@ impl ResponseSummary {
             .iter()
             .map(|(key, next)| {
                 let query_name = next.query_name.as_str();
+
                 match self.previous_averages.get(key) {
                     Some(previous) => (
                         query_name,
                         Some((
-                            (1.0 - next.p50 / previous.p50) * 100.0,
-                            (1.0 - next.p95 / previous.p95) * 100.0,
-                            (1.0 - next.p99 / previous.p99) * 100.0,
+                            (1.0 - previous.p50 / next.p50) * 100.0,
+                            (1.0 - previous.p95 / next.p95) * 100.0,
+                            (1.0 - previous.p99 / next.p99) * 100.0,
                         )),
                     ),
                     None => (query_name, None),
@@ -123,7 +124,7 @@ impl ResponseSummary {
     fn insert(&mut self, value: ResponseAverage) {
         let key = value.query_name.clone();
 
-        if self.previous_averages.contains_key(&key) {
+        if !self.next_averages.contains_key(&key) {
             self.next_averages.insert(key, value);
         } else {
             self.previous_averages.insert(key, value);
