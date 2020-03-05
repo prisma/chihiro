@@ -13,7 +13,6 @@ mod response_summary;
 mod server;
 
 use bench::Bench;
-use error::Error;
 use reporter::{Reporter, SlackReporter, StdoutReporter};
 use response_summary::ConnectorType;
 use server::Server;
@@ -120,41 +119,18 @@ async fn main() -> Result<()> {
     env_logger::init();
 
     match Opt::from_args() {
-        Opt::Bench(bench_opts) => {
-            let result = Bench::new(bench_opts).await?.run().await;
-
-            if let Err(e @ Error::AlreadyMeasured { .. }) = result {
-                println!("{}", e);
-                Ok(())
-            } else {
-                result
-            }
-        }
+        Opt::Bench(bench_opts) => Bench::new(bench_opts).await?.run().await,
         Opt::Kibana(kibana_opts) => kibana::generate(kibana_opts),
         Opt::Setup(setup_opts) => Server::new(setup_opts)?.setup(),
         Opt::StdoutReport(report_opts) => {
-            let result = StdoutReporter
+            StdoutReporter
                 .report(&report_opts.secondary_storage, report_opts.connector)
-                .await;
-
-            if let Err(e @ Error::NotEnoughMeasurements(..)) = result {
-                println!("{}", e);
-                Ok(())
-            } else {
-                result
-            }
+                .await
         }
         Opt::SlackReport(report_opts) => {
-            let result = SlackReporter::new(&report_opts.webhook_url)
+            SlackReporter::new(&report_opts.webhook_url)
                 .report(&report_opts.secondary_storage, report_opts.connector)
-                .await;
-
-            if let Err(e @ Error::NotEnoughMeasurements(..)) = result {
-                println!("{}", e);
-                Ok(())
-            } else {
-                result
-            }
+                .await
         }
     }
 }
