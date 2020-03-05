@@ -160,6 +160,10 @@ impl Reporter for SlackReporter {
             }
         }
 
+        blocks.push(json!({
+            "type": "divider"
+        }));
+
         let payload = json!({ "blocks": Value::from(blocks) });
 
         self.client
