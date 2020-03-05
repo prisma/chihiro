@@ -122,7 +122,7 @@ impl Reporter for SlackReporter {
 
         let overview = format!(
             "Benchmark results for *{}* connector, comparing commit_id `{}` against commit_id `{}`. (<https://github.com/prisma/prisma-engines/compare/{}...{}|Changelog>)",
-            "postgres",
+            connector.as_str(),
             &previous_id[0..6],
             &next_id[0..6],
             &previous_id,
