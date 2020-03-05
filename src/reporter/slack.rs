@@ -125,8 +125,8 @@ impl Reporter for SlackReporter {
             connector.as_str(),
             &previous_id[0..6],
             &next_id[0..6],
-            &previous_id,
-            &next_id,
+            previous_id,
+            next_id,
         );
 
         let mut blocks = Vec::new();
