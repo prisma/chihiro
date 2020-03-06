@@ -21,7 +21,7 @@ impl SlackReporter {
         if num < 0.0 {
             format!("{:.2}%", num)
         } else {
-            format!("*_{:.2}%_*", num)
+            format!("*_+{:.2}%_*", num)
         }
     }
 
