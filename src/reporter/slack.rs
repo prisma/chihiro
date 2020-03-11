@@ -33,14 +33,12 @@ impl SlackReporter {
         }
     }
 
-    fn blocks_with_data(title: String, p50: f64, p95: f64, p99: f64) -> serde_json::Value {
+    fn blocks_with_data(title: String, p50: f64, p95: f64, _: f64) -> serde_json::Value {
         let p50_title = Self::format_title(p50, "p50");
         let p95_title = Self::format_title(p95, "p95");
-        let p99_title = Self::format_title(p99, "p99");
 
         let p50 = Self::format_number(p50);
         let p95 = Self::format_number(p95);
-        let p99 = Self::format_number(p99);
 
         json!({
             "type": "section",
@@ -65,14 +63,6 @@ impl SlackReporter {
                     "text": p95,
                     "type": "mrkdwn"
                 },
-                {
-                    "text": p99_title,
-                    "type": "mrkdwn"
-                },
-                {
-                    "text": p99,
-                    "type": "mrkdwn"
-                }
             ]
         })
     }
@@ -95,14 +85,6 @@ impl SlackReporter {
                 },
                 {
                     "text": "_p95_",
-                    "type": "mrkdwn"
-                },
-                {
-                    "text": "_new_",
-                    "type": "mrkdwn"
-                },
-                {
-                    "text": "_p99_",
                     "type": "mrkdwn"
                 },
                 {
