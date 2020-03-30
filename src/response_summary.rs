@@ -64,18 +64,18 @@ impl ResponseSummary {
         let select = Select::from_table("response_time")
             .column(Column::from(("response_time", "query_name")).alias("query_name"))
             .column(Column::from(("version", "commit_id")).alias("commit_id"))
-            .value(Function::from(avg(("response_time", "p50"))).alias("p50"))
-            .value(Function::from(avg(("response_time", "p95"))).alias("p95"))
-            .value(Function::from(avg(("response_time", "p99"))).alias("p99"))
+            .value(avg(("response_time", "p50")).alias("p50"))
+            .value(avg(("response_time", "p95")).alias("p95"))
+            .value(avg(("response_time", "p99")).alias("p99"))
             .inner_join(
                 "version".on(("version", "id").equals(Column::from(("response_time", "version")))),
             )
-            .so_that(Column::from(("version", "id")).in_selection(selected_versions))
-            .group_by(Column::from(("response_time", "query_name")))
-            .group_by(Column::from(("version", "commit_id")))
-            .group_by(Column::from(("version", "id")))
-            .order_by(Column::from(("version", "id")).descend())
-            .order_by(Column::from(("response_time", "query_name")).ascend());
+            .so_that(("version", "id").in_selection(selected_versions))
+            .group_by(("response_time", "query_name"))
+            .group_by(("version", "commit_id"))
+            .group_by(("version", "id"))
+            .order_by(("version", "id").descend())
+            .order_by(("response_time", "query_name").ascend());
 
         let times: Vec<ResponseAverage> = quaint::serde::from_rows(db.select(select).await?)?;
         let mut summary = Self::default();

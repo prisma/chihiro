@@ -69,9 +69,7 @@ enum ResponseType {
 
 impl Requester {
     pub fn new(endpoint_type: Option<EndpointType>, endpoint_url: String) -> crate::Result<Self> {
-        let mut builder = Client::builder();
-        builder.keep_alive(true);
-
+        let builder = Client::builder();
         let client = builder.build(HttpConnector::new());
         let receiver = Receiver::builder().build()?;
         let endpoint_type = endpoint_type.unwrap_or(EndpointType::Prisma);
