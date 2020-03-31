@@ -2,9 +2,9 @@ query Complex {
   findManyComment(where: { post: { id: $post_id }})
   {
     content
-    likes(where: { id_gt: 10000 }) {
+    Like(where: { id_gt: 10000 }) {
       id
-      post {
+      Post {
         id
         content
       }

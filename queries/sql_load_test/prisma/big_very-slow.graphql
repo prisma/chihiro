@@ -1,9 +1,9 @@
 query Big {
   findManyUser(where: { id_lt: 100 }) {
-    posts {
+    Post {
       content
       createdAt
-      comments {
+      Comment {
         content
         createdAt
       }

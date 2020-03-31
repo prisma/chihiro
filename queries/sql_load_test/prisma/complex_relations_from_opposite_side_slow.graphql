@@ -2,10 +2,10 @@ query ComplexRelationsFromOppositeSide {
   findManyComment(where: { id_lt: 100 }) {
     id
     content
-    post {
+    Post {
       id
       content
-      author {
+      User {
         id
         firstName
         lastName

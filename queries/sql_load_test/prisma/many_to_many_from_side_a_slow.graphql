@@ -3,6 +3,6 @@ query ManyToManyFromSideA {
     id
     firstName
     lastName
-    friendWith { id firstName lastName }
+    FriendWith { id firstName lastName }
   }
 }
