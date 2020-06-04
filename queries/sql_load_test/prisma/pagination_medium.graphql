@@ -1,5 +1,5 @@
 query Pagination {
-  findManyLike(first: 150, skip: 80000, orderBy: id_ASC) {
+  findManyLike(take: 150, skip: 80000, orderBy: id_ASC) {
     id
     Post {
       id
