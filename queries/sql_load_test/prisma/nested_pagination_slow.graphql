@@ -6,7 +6,7 @@ query NestedPagination {
     Post(skip: 5, orderBy: id_DESC) {
       id
       content
-      Comment(first: 3, orderBy: id_DESC) {
+      Comment(take: 3, orderBy: id_DESC) {
         id
         content
       }
