@@ -81,16 +81,16 @@ impl TestConfig {
                 .medium
                 .clone()
                 .unwrap_or_else(|| MEDIUM_RATES.to_vec())
-        } else if name.contains("fast") {
-            self.rates
-                .fast
-                .clone()
-                .unwrap_or_else(|| FAST_RATES.to_vec())
         } else if name.contains("very-fast") {
             self.rates
                 .very_fast
                 .clone()
                 .unwrap_or_else(|| VERY_FAST_RATES.to_vec())
+        } else if name.contains("fast") {
+            self.rates
+                .fast
+                .clone()
+                .unwrap_or_else(|| FAST_RATES.to_vec())
         } else {
             panic!(
                 "File name should contain the query speed: (very-slow|slow|medium|fast|very-fast)"
